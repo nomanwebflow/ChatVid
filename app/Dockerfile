@@ -2,7 +2,7 @@
 # Isolated image; does not touch any other service on the host.
 
 # ---- build the editor (Vite dist) ----
-FROM node:20-bookworm-slim AS build
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -10,7 +10,7 @@ COPY . .
 RUN npm run build
 
 # ---- runtime: Node + headless-Chrome system libs + FFmpeg ----
-FROM node:20-bookworm-slim AS runtime
+FROM node:22-bookworm-slim AS runtime
 # Chrome Headless Shell (downloaded by Remotion at first render) needs these.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ffmpeg \
