@@ -1,10 +1,18 @@
-import { useCurrentFrame } from "remotion";
+import { useCurrentFrame, staticFile } from "remotion";
 import type { Project, Message } from "../types";
 import { buildTimeline, messageStateAt, typingVisibleAt, currentEventIndex } from "../timeline";
 import { TailThem, TailMe, CheckTick, StatusIcons, Chevron, CallIcons, ComposerIcons, avatarDataUri } from "./svg";
 import "./chat.css";
 
 type Props = { project: Project };
+
+// Resolve a wallpaper src for BOTH the Player and the Remotion render.
+// Bundled assets (bare filename) must go through staticFile() so they resolve
+// against the render bundle's static root; data URIs and absolute URLs pass through.
+function wallpaperSrc(url: string): string {
+  if (/^(data:|https?:|blob:)/.test(url)) return url;
+  return staticFile(url.replace(/^\//, ""));
+}
 
 // Entry transform from animation type + 0..1 progress.
 function entryStyle(anim: Message["animation"], p: number): React.CSSProperties {
@@ -53,7 +61,7 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
   const Scene = (
     <>
       <div className="chat-bkg">
-        {project.appearance.wallpaperUrl ? <img src={project.appearance.wallpaperUrl} alt="" /> : null}
+        {project.appearance.wallpaperUrl ? <img src={wallpaperSrc(project.appearance.wallpaperUrl)} alt="" /> : null}
       </div>
 
       <div className="messages-scroll">
