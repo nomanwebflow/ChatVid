@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock Chat</title>
+<style>
+  :root{
+    --bg-chat:#f5f2eb;
+    --baloon-me:#d0fecf;
+    --baloon-them:#ffffff;
+    --panel:rgb(233 229 222 / 61%);
+    --shadow-baloon:rgba(0,0,0,.06);
+    --txt-primary:#0a0a0a;
+    --txt-secondary:rgba(0,0,0,.5);
+    --brd-avatar:rgba(10,10,10,.1);
+    --brd-input:#b2b2b2;
+    --icon-active:#007bfc;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+    background:
+      radial-gradient(120% 90% at 85% 8%, #dcefe0 0%, rgba(220,239,224,0) 55%),
+      radial-gradient(130% 100% at 8% 96%, #f3ece2 0%, rgba(243,236,226,0) 55%),
+      #eef3ec;
+    min-height:100%;
+    display:flex;align-items:center;justify-content:center;
+    padding:32px 16px;
+  }
+
+  /* ─── phone stage + float ─── */
+  .phone-stage{
+    position:relative;width:100%;max-width:360px;
+    aspect-ratio:1/1.79644;margin:0 auto;
+    container:stage/size;
+  }
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+
+  .bc-mount{position:absolute;inset:0}
+  .bc-mount,.bc-mount *{font-family:-apple-system,"SF Pro Text","Helvetica Neue",Helvetica,sans-serif;line-height:1.33}
+
+  .phone-frame{
+    position:absolute;top:50%;left:50%;width:419px;height:878px;padding:13px;
+    background:linear-gradient(155deg,#2a2a2c 0%,#0c0c0e 55%,#1a1a1c 100%);
+    border-radius:64px;
+    transform:translate(-50%,-50%) scale(min(100cqi/419px,100cqh/878px));
+    transform-origin:center center;
+    box-shadow:0 40px 90px -30px rgba(20,36,27,.55);
+  }
+  .btn-side{position:absolute;background:linear-gradient(to right,#050505,#2c2c2e 45%,#1a1a1c 80%,#050505);border-radius:1px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 -1px 0 rgba(0,0,0,.5)}
+  .btn-mute{left:-2.5px;top:108px;width:3.5px;height:28px;border-radius:2px 0 0 2px}
+  .btn-vol-up{left:-3px;top:156px;width:4px;height:56px;border-radius:2px 0 0 2px}
+  .btn-vol-dn{left:-3px;top:224px;width:4px;height:56px;border-radius:2px 0 0 2px}
+  .btn-power{right:-3px;top:180px;width:4px;height:100px;border-radius:0 2px 2px 0;
+    background:linear-gradient(to left,#050505,#2c2c2e 45%,#1a1a1c 80%,#050505)}
+
+  .phone{
+    position:relative;width:393px;height:852px;border-radius:52px;overflow:hidden;
+    background:var(--bg-chat);
+  }
+  .dynamic-island{position:absolute;top:11px;left:50%;transform:translateX(-50%);
+    width:124px;height:37px;background:#000;border-radius:20px;z-index:200;
+    box-shadow:inset 0 -1px 2px rgba(255,255,255,.05),0 1px 0 rgba(255,255,255,.02);pointer-events:none}
+
+  /* ─── chat background (user-supplied image) ─── */
+  .chat-bkg{position:absolute;inset:0;z-index:0;background:var(--bg-chat)}
+  .chat-bkg img{width:100%;height:100%;object-fit:cover;display:block}
+
+  /* ─── messages ─── */
+  .messages-scroll{position:absolute;inset:0;overflow:hidden;padding-top:98px;padding-bottom:77px;z-index:5}
+  .messages-scroll::-webkit-scrollbar{display:none}
+  .messages-inner{display:flex;flex-direction:column;gap:12px;padding-bottom:8px;min-height:100%;justify-content:flex-start}
+
+  .date-row{display:flex;align-items:center;justify-content:center;padding:23px 0 1px}
+  .date-chip{background:#fff;border:.66px solid var(--shadow-baloon);border-radius:8px;
+    padding:3px 14px;font-size:13.5px;font-weight:600;color:var(--txt-primary);min-width:100px;text-align:center}
+
+  .msg-row-me{display:flex;flex-direction:column;align-items:flex-end;padding:0 16px 4px}
+  .msg-row-them{display:flex;flex-direction:column;align-items:flex-start;padding:0 16px 4px 8px}
+  .avatar-wrap{display:flex;align-items:flex-end;gap:8px;padding-left:8px;margin-bottom:-4px}
+
+  .bubble{position:relative;border-radius:12px;border:.66px solid var(--shadow-baloon);
+    max-width:287px;min-width:88px;box-shadow:0 .66px 0 var(--shadow-baloon)}
+  .bubble-me{background:var(--baloon-me)}
+  .bubble-them{background:var(--baloon-them)}
+
+  .tail-me,.tail-them{position:absolute;bottom:0;width:15px;height:18px;pointer-events:none;overflow:visible}
+  .tail-me{right:-7.5px}
+  .tail-them{left:-7.5px}
+
+  .bubble-text{font-size:16px;line-height:20.16px;letter-spacing:-.208px;color:var(--txt-primary);font-weight:400;word-break:break-word}
+  .bubble-text-row{display:flex;align-items:flex-start}
+  /* reserve room on the last text line so the timestamp never overlaps */
+  .bubble-me .bubble-text::after{content:"";display:inline-block;width:3.6em;height:1px;vertical-align:middle}
+  .bubble-them .bubble-text::after{content:"";display:inline-block;width:2.6em;height:1px;vertical-align:middle}
+
+  .ts{position:absolute;bottom:3px;right:8.11px;display:flex;align-items:center;gap:2px;
+    font-size:12.4px;color:var(--txt-secondary);letter-spacing:.62px;white-space:nowrap;line-height:normal}
+  .check{width:17px;height:17px;position:relative;overflow:hidden;flex-shrink:0}
+  .check svg{display:block}
+
+  /* ─── status bar ─── */
+  .status-bar{position:absolute;top:0;left:0;width:393px;height:54px;display:flex;align-items:flex-end;
+    justify-content:space-between;padding:16px 31.33px 11px 41.5px;z-index:30;
+    backdrop-filter:blur(25px);background:var(--panel)}
+  .status-time{font-size:19px;font-weight:700;color:var(--txt-primary);letter-spacing:-.665px;width:54px;text-align:center}
+  .status-right{display:flex;align-items:center;gap:7.35px;color:var(--txt-primary)}
+  .status-right svg{display:block}
+
+  /* ─── contact header ─── */
+  .top-contact{position:absolute;top:0;left:0;width:393px;height:98px;display:flex;flex-direction:column;
+    align-items:flex-end;justify-content:flex-end;padding:4px 22px 4px 0;z-index:25;
+    backdrop-filter:blur(25px);background:var(--panel)}
+  .contacts-row{display:flex;align-items:center;justify-content:space-between;width:100%}
+  .contacts-left{display:flex;align-items:center;width:272px}
+  .chevron-wrap{width:32px;height:32px;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#1b8cff}
+  .contact-block{display:flex;align-items:center;gap:10px;flex:1;min-width:0;margin-left:2px}
+  .contact-photo{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;border:.212px solid var(--brd-avatar)}
+  .contact-txt{display:flex;flex-direction:column;min-width:0}
+  .contact-name{font-size:18px;font-weight:600;color:var(--txt-primary);letter-spacing:-.36px;white-space:nowrap}
+  .contact-sub{font-size:13.5px;color:var(--txt-secondary);letter-spacing:-.12px;white-space:nowrap}
+  .call-btns{display:flex;align-items:flex-start;gap:16px;padding-bottom:2px;flex-shrink:0;color:#0a0a0a}
+  .call-btns svg{display:block}
+
+  /* ─── composer ─── */
+  .input-bar{position:absolute;bottom:0;right:0;width:393px;z-index:30;display:flex;flex-direction:column;align-items:center}
+  .input-inner{display:flex;align-items:center;gap:8px;padding:5.5px 9px;position:relative;width:100%}
+  .i-plus{flex-shrink:0;color:#0a0a0a}
+  .i-field{flex:1;background:#fff;border:.33px solid var(--brd-input);border-radius:15px;
+    display:flex;align-items:center;gap:16px;padding:4px 9px 4px 10px;min-height:30px;min-width:0}
+  .i-placeholder{flex:1;font-size:16px;line-height:21px;color:var(--txt-primary);letter-spacing:-.32px;opacity:.3}
+  .i-icons{display:flex;align-items:center;gap:7px;flex-shrink:0;color:#0a0a0a}
+  .i-icons svg,.i-field svg{display:block}
+  .home-ind{display:flex;align-items:center;justify-content:center;padding:21px 0 8px;position:relative;width:100%}
+  .home-bar{width:140px;height:5px;background:var(--txt-primary);border-radius:100px}
+
+  /* ─── animation ─── */
+  .anim-hidden{display:none !important}
+  @keyframes bubble-in{0%{opacity:0;transform:translateY(8px) scale(.96)}100%{opacity:1;transform:translateY(0) scale(1)}}
+  .reveal-bubble{animation:bubble-in .28s cubic-bezier(.22,.9,.36,1) both;transform-origin:bottom center}
+  .reveal-bubble.from-me{transform-origin:bottom right}
+  .reveal-bubble.from-them{transform-origin:bottom left}
+
+  .typing-bubble{background:var(--baloon-them);border:.66px solid var(--shadow-baloon);border-radius:12px;
+    box-shadow:0 .66px 0 var(--shadow-baloon);padding:10px 14px;position:relative;min-width:56px;
+    display:inline-flex;align-items:center;justify-content:center}
+  .typing-dots{display:inline-flex;gap:4px;align-items:center}
+  .typing-dots span{width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.35);
+    animation:typing-bounce 1.2s ease-in-out infinite}
+  .typing-dots span:nth-child(2){animation-delay:.15s}
+  .typing-dots span:nth-child(3){animation-delay:.3s}
+  @keyframes typing-bounce{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-4px);opacity:.9}}
+
+  @media (prefers-reduced-motion:reduce){
+    .phone-stage{animation:none}
+    .reveal-bubble{animation:none}
+    .typing-row{display:none}
+    .typing-dots span{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="phone-stage">
+  <div class="bc-mount">
+    <div class="phone-frame">
+      <div class="btn-side btn-mute"></div>
+      <div class="btn-side btn-vol-up"></div>
+      <div class="btn-side btn-vol-dn"></div>
+      <div class="btn-side btn-power"></div>
+      <div class="phone">
+        <div class="dynamic-island"></div>
+
+        <!-- chat background -->
+        <div class="chat-bkg">
+          <img src="wa-bg.webp" alt="">
+        </div>
+
+        <!-- messages -->
+        <div class="messages-scroll" id="msgs">
+          <div class="messages-inner" id="inner" style="transition:none;opacity:1">
+
+            <div class="date-row reveal-bubble" data-after="600">
+              <div class="date-chip">Today</div>
+            </div>
+
+            <div class="msg-row-them reveal-bubble from-them" data-typing="1800" data-after="1200">
+              <div class="avatar-wrap">
+                <div class="bubble bubble-them" style="padding:5.5px 10px 6px">
+                  <div class="tail-them">__TAIL_THEM__</div>
+                  <div class="bubble-text-row" style="padding:0">
+                    <span class="bubble-text">Hey, sorry I missed your call! What's up?</span>
+                  </div>
+                  <div class="ts">10:14</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="msg-group" data-after="1800">
+              <div class="msg-row-me reveal-bubble from-me" style="padding-bottom:0" data-before="2800" data-after="0">
+                <div class="bubble bubble-me" style="padding:5.5px 10px 6px">
+                  <span class="bubble-text">No worries man. Quick one. You're my go-to marketing guru.</span>
+                  <div class="ts">10:14 <div class="check">__CHECK__</div></div>
+                </div>
+              </div>
+              <div class="msg-row-me reveal-bubble from-me" style="padding-bottom:0" data-before="2400" data-after="0">
+                <div class="bubble bubble-me" style="padding:5.5px 10px 6px">
+                  <span class="bubble-text">My product is just not selling, and my ad metrics SUCK.</span>
+                  <div class="ts">10:15 <div class="check">__CHECK__</div></div>
+                </div>
+              </div>
+              <div class="msg-row-me reveal-bubble from-me" data-before="1100">
+                <div class="bubble bubble-me" style="padding:5.5px 10px 6px">
+                  <div class="tail-me">__TAIL_ME__</div>
+                  <span class="bubble-text">I need your help.</span>
+                  <div class="ts">10:15 <div class="check">__CHECK__</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="msg-row-them reveal-bubble from-them" data-typing="2500" data-after="1500">
+              <div class="avatar-wrap">
+                <div class="bubble bubble-them" style="padding:5.5px 10px 6px">
+                  <div class="tail-them">__TAIL_THEM__</div>
+                  <div class="bubble-text-row" style="padding:0">
+                    <span class="bubble-text">Ah... video ads and such? It's a fun world man 🙂</span>
+                  </div>
+                  <div class="ts">10:16</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="msg-group" data-after="1500">
+              <div class="msg-row-me reveal-bubble from-me" style="padding-bottom:0" data-before="2200" data-after="0">
+                <div class="bubble bubble-me" style="padding:5.5px 10px 6px">
+                  <span class="bubble-text">YES! I see so many businesses with killer ads.</span>
+                  <div class="ts">10:16 <div class="check">__CHECK__</div></div>
+                </div>
+              </div>
+              <div class="msg-row-me reveal-bubble from-me" data-before="1200">
+                <div class="bubble bubble-me" style="padding:5.5px 10px 6px">
+                  <div class="tail-me">__TAIL_ME__</div>
+                  <span class="bubble-text">I just can't make it work.</span>
+                  <div class="ts">10:17 <div class="check">__CHECK__</div></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- status bar -->
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <span class="status-right">
+            <svg width="18" height="11" viewBox="0 0 18 11"><g fill="currentColor">
+              <rect x="0" y="7" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="6" rx="1"/>
+              <rect x="10" y="2.5" width="3" height="8.5" rx="1"/><rect x="15" y="0" width="3" height="11" rx="1"/>
+            </g></svg>
+            <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><path d="M8.5 2.3c2.7 0 5.2 1 7.1 2.8l-1.4 1.4A8 8 0 0 0 8.5 4.3 8 8 0 0 0 2.9 6.5L1.4 5.1A10.2 10.2 0 0 1 8.5 2.3Zm0 3.7c1.7 0 3.3.6 4.5 1.8l-1.4 1.4A5 5 0 0 0 8.5 9.7 5 5 0 0 0 5.4 11L4 9.5A6.9 6.9 0 0 1 8.5 6Zm0 3.4 1.6 1.6-1.6 1.3-1.6-1.3Z"/></svg>
+            <svg width="25" height="13" viewBox="0 0 25 13"><rect x="1" y="1" width="20" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="2.5" y="2.5" width="17" height="8" rx="1.5" fill="currentColor"/><rect x="22" y="4" width="2" height="5" rx="1" fill="currentColor" fill-opacity=".4"/></svg>
+          </span>
+        </div>
+
+        <!-- header -->
+        <div class="top-contact">
+          <div class="contacts-row">
+            <div class="contacts-left">
+              <div class="chevron-wrap">
+                <svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 L3 10 L9 17"/></svg>
+              </div>
+              <div class="contact-block">
+                <img class="contact-photo" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2325d366'/%3E%3Cstop offset='1' stop-color='%230a6b3b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='36' height='36' rx='18' fill='url(%23g)'/%3E%3Ccircle cx='18' cy='14' r='6.2' fill='%23fff' fill-opacity='.92'/%3E%3Cpath d='M6 34c1-7.5 5.5-10.5 12-10.5S29 26.5 30 34z' fill='%23fff' fill-opacity='.92'/%3E%3C/svg%3E">
+                <div class="contact-txt">
+                  <span class="contact-name">Todd</span>
+                  <span class="contact-sub" id="hsub">online</span>
+                </div>
+              </div>
+            </div>
+            <div class="call-btns">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l5-3v10l-5-3"/><rect x="3" y="6" width="12" height="12" rx="2.5"/></svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.2.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.6.1.4 0 .8-.3 1z"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- composer -->
+        <div class="input-bar">
+          <div class="input-inner">
+            <span class="i-plus"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            <div class="i-field"><span class="i-placeholder">Message</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5b5b5b" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1 2 1.3 3.5 1.3s2.5-.3 3.5-1.3" stroke-linecap="round"/><circle cx="9" cy="10" r="1.1" fill="#5b5b5b" stroke="none"/><circle cx="15" cy="10" r="1.1" fill="#5b5b5b" stroke="none"/></svg>
+            </div>
+            <div class="i-icons">
+              <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.2l1-1.6A1 1 0 0 1 9.5 4h5a1 1 0 0 1 .85.47L16.3 6h2.2A2.5 2.5 0 0 1 21 8.5v8A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z"/><circle cx="12" cy="12.3" r="3.3"/></svg>
+              <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+          <div class="home-ind"><span class="home-bar"></span></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ─── inject shared SVG markup (tails + check) into placeholders ───
+  const TAIL_THEM = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="19" viewBox="0 0 15 19" fill="none"><path d="M7.5 4L7.5 0H15V14C11.3406 17.2528 4.37479 17.8604 1.90001 17.9739C1.59291 17.988 1.43536 17.6021 1.65211 17.3841C3.2998 15.727 7.5 10.8328 7.5 4Z" fill="white"/><path d="M7.16992 -0.330078V4C7.16992 10.6998 3.04651 15.5136 1.41797 17.1514C1.00912 17.5626 1.27945 18.3328 1.91504 18.3037C3.1629 18.2465 5.54456 18.065 8.0791 17.4863C10.6056 16.9095 13.3277 15.9289 15.2197 14.2471L15.3301 14.1484V-0.330078H7.16992Z" fill="white" stroke="black" stroke-opacity="0.06" stroke-width="0.66"/></svg>`;
+  const TAIL_ME = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="19" viewBox="0 0 15 19" fill="none"><path d="M7.5 4L7.5 0H0V14C3.65938 17.2528 10.6252 17.8604 13.1 17.9739C13.4071 17.988 13.5646 17.6021 13.3479 17.3841C11.7002 15.727 7.5 10.8328 7.5 4Z" fill="#D0FECF"/><path d="M7.83008 -0.330078V4C7.83008 10.6998 11.9535 15.5136 13.582 17.1514C13.9909 17.5626 13.7206 18.3328 13.085 18.3037C11.8371 18.2465 9.45544 18.065 6.9209 17.4863C4.39444 16.9095 1.67228 15.9289 -0.219727 14.2471L-0.330078 14.1484V-0.330078H7.83008Z" fill="#D0FECF" stroke="black" stroke-opacity="0.06" stroke-width="0.66"/></svg>`;
+  const CHECK = `<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 17 17" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.6265 3.84692C9.87393 3.53898 10.3242 3.48942 10.6324 3.73657C10.9404 3.98384 10.9905 4.43415 10.7437 4.74243L4.55814 12.4475C4.43092 12.606 4.2425 12.7029 4.03958 12.7141C3.83663 12.7252 3.63846 12.6497 3.49466 12.5061L0.99466 10.0061C0.715139 9.72659 0.714203 9.27295 0.993684 8.9934C1.27315 8.71411 1.72688 8.71417 2.00638 8.9934L3.94193 10.929L9.6265 3.84692ZM13.7124 3.84692C13.9599 3.53876 14.411 3.48916 14.7193 3.73657C15.0272 3.98391 15.0765 4.43421 14.8296 4.74243L8.64407 12.4475C8.5168 12.606 8.3285 12.703 8.12552 12.7141C7.92253 12.7252 7.72441 12.6498 7.5806 12.5061L6.5806 11.5071C6.30125 11.2277 6.30065 10.774 6.57962 10.4944C6.85902 10.215 7.31275 10.2143 7.59232 10.4934L8.02786 10.928L13.7124 3.84692Z" fill="#007BFC"/></svg>`;
+  document.querySelectorAll('.tail-them').forEach(e=>e.innerHTML=TAIL_THEM);
+  document.querySelectorAll('.tail-me').forEach(e=>e.innerHTML=TAIL_ME);
+  document.querySelectorAll('.check').forEach(e=>e.innerHTML=CHECK);
+
+  const inner = document.getElementById('inner');
+  const scroll = document.getElementById('msgs');
+  const sub = document.getElementById('hsub');
+  const defaultSub = 'online';
+
+  // ─── timing engine (ported from the reference's data-driven scheduler) ───
+  const T = {
+    dateChip:500, beforeMe:650, afterMe:450,
+    typingMin:900, typingPerChar:28, typingMax:3200,
+    readPerChar:22, readMin:600, readMax:2400,
+    groupGap:350, loopHold:4000, loopFade:600,
+  };
+  const attrMs=(n,name,fb)=>{ if(!n||!n.getAttribute) return fb; const v=n.getAttribute('data-'+name);
+    if(v===null||v==='') return fb; const x=parseFloat(v); return Number.isFinite(x)?x:fb; };
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  const scrollDown=()=>{scroll.scrollTop=scroll.scrollHeight;};
+  const setTyping=on=>{sub.textContent=on?'typing…':defaultSub;};
+  const plainText=n=>(n.innerText||n.textContent||'').replace(/\s+/g,' ').trim();
+  const typingTime=t=>Math.min(T.typingMax,Math.max(T.typingMin,t.length*T.typingPerChar));
+  const readingTime=t=>Math.min(T.readMax,Math.max(T.readMin,t.length*T.readPerChar));
+
+  function makeTyping(){
+    const row=document.createElement('div');
+    row.className='msg-row-them typing-row';
+    row.innerHTML=`<div class="avatar-wrap"><div class="typing-bubble"><div class="tail-them">${TAIL_THEM}</div><div class="typing-dots"><span></span><span></span><span></span></div></div></div>`;
+    return row;
+  }
+
+  const items=Array.from(inner.children);
+
+  async function revealMe(row){
+    await sleep(attrMs(row,'before',T.beforeMe));
+    row.classList.remove('anim-hidden');
+    row.classList.add('reveal-bubble','from-me');
+    scrollDown();
+    await sleep(attrMs(row,'after',T.afterMe));
+  }
+  async function revealThem(row){
+    await sleep(attrMs(row,'before',0));
+    setTyping(true);
+    const ti=makeTyping();
+    inner.insertBefore(ti,row);
+    scrollDown();
+    await sleep(attrMs(row,'typing',typingTime(plainText(row))));
+    ti.remove(); setTyping(false);
+    row.classList.remove('anim-hidden');
+    row.classList.add('reveal-bubble','from-them');
+    scrollDown();
+    await sleep(attrMs(row,'after',readingTime(plainText(row))));
+  }
+  async function revealGroup(group){
+    await sleep(attrMs(group,'before',0));
+    group.classList.remove('anim-hidden');
+    const kids=Array.from(group.children);
+    kids.forEach(k=>k.classList.add('anim-hidden'));
+    const fromThem=kids[0].classList.contains('msg-row-them');
+    if(fromThem){
+      for(let i=0;i<kids.length;i++){
+        const k=kids[i];
+        setTyping(true);
+        const ti=makeTyping();
+        group.parentNode.insertBefore(ti,group.nextSibling);
+        scrollDown();
+        await sleep(attrMs(k,'typing',typingTime(plainText(k))));
+        ti.remove(); setTyping(false);
+        k.classList.remove('anim-hidden');
+        k.classList.add('reveal-bubble','from-them');
+        scrollDown();
+        if(i<kids.length-1) await sleep(attrMs(k,'after',T.groupGap));
+      }
+      await sleep(attrMs(group,'after',readingTime(plainText(group))));
+    }else{
+      for(let i=0;i<kids.length;i++){
+        const k=kids[i];
+        await sleep(attrMs(k,'before',i===0?T.beforeMe:T.groupGap));
+        k.classList.remove('anim-hidden');
+        k.classList.add('reveal-bubble','from-me');
+        scrollDown();
+        if(i<kids.length-1) await sleep(attrMs(k,'after',0));
+      }
+      await sleep(attrMs(group,'after',T.afterMe));
+    }
+  }
+
+  function resetAll(){
+    inner.querySelectorAll('.typing-row').forEach(n=>n.remove());
+    items.forEach(n=>{
+      n.classList.add('anim-hidden');
+      n.classList.remove('reveal-bubble','from-me','from-them');
+      n.querySelectorAll('.reveal-bubble').forEach(c=>c.classList.remove('reveal-bubble','from-me','from-them'));
+      n.querySelectorAll('.anim-hidden').forEach(c=>c.classList.remove('anim-hidden'));
+    });
+    setTyping(false);
+    scroll.scrollTop=0;
+  }
+
+  async function playOnce(){
+    resetAll();
+    inner.style.transition='none';
+    inner.style.opacity='1';
+    await sleep(400);
+    for(const node of items){
+      if(node.classList.contains('date-row')){
+        await sleep(attrMs(node,'before',0));
+        node.classList.remove('anim-hidden');
+        node.classList.add('reveal-bubble');
+        scrollDown();
+        await sleep(attrMs(node,'after',T.dateChip));
+      }else if(node.classList.contains('msg-group')){
+        await revealGroup(node);
+      }else if(node.classList.contains('msg-row-me')){
+        await revealMe(node);
+      }else if(node.classList.contains('msg-row-them')){
+        await revealThem(node);
+      }else{
+        node.classList.remove('anim-hidden');
+      }
+    }
+  }
+
+  async function loop(){
+    while(true){
+      await playOnce();
+      await sleep(T.loopHold);
+      inner.style.transition='opacity '+T.loopFade+'ms ease';
+      inner.style.opacity='0';
+      await sleep(T.loopFade);
+    }
+  }
+
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){
+    sub.textContent='online';   // static: full convo already in DOM, visible
+  }else{
+    loop();
+  }
+})();
+</script>
+</body>
+</html>

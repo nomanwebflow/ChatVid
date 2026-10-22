@@ -1,0 +1,104 @@
+/* Phone + chat UI — ported from the verified chat.html, frame-driven.
+   Exact reference dimensions: phone 393x852 r52, bubble text 16/20.16/-0.208. */
+.cmp-root{
+  --bg-chat:#f5f2eb;--baloon-me:#d0fecf;--baloon-them:#ffffff;
+  --panel:rgb(233 229 222 / 61%);--shadow-baloon:rgba(0,0,0,.06);
+  --txt-primary:#0a0a0a;--txt-secondary:rgba(0,0,0,.5);
+  --brd-avatar:rgba(10,10,10,.1);--brd-input:#b2b2b2;
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  font-family:-apple-system,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;line-height:1.33;
+}
+/* scale the phone up so it fills the 1080x1920 composition width.
+   phone-frame is 419px wide -> 1080/419 ≈ 2.577 (phone mode).
+   fullscreen phone is 393px -> 1080/393 ≈ 2.748. */
+.cmp-root .scaler{transform-origin:center center}
+.cmp-root *{box-sizing:border-box;margin:0;padding:0;font-family:inherit}
+
+/* ── phone frame ── */
+.phone-frame{position:relative;width:419px;height:878px;padding:13px;
+  background:linear-gradient(155deg,#2a2a2c 0%,#0c0c0e 55%,#1a1a1c 100%);border-radius:64px}
+.btn-side{position:absolute;background:linear-gradient(to right,#050505,#2c2c2e 45%,#1a1a1c 80%,#050505);border-radius:1px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 -1px 0 rgba(0,0,0,.5)}
+.btn-mute{left:-2.5px;top:108px;width:3.5px;height:28px;border-radius:2px 0 0 2px}
+.btn-vol-up{left:-3px;top:156px;width:4px;height:56px;border-radius:2px 0 0 2px}
+.btn-vol-dn{left:-3px;top:224px;width:4px;height:56px;border-radius:2px 0 0 2px}
+.btn-power{right:-3px;top:180px;width:4px;height:100px;border-radius:0 2px 2px 0;
+  background:linear-gradient(to left,#050505,#2c2c2e 45%,#1a1a1c 80%,#050505)}
+
+.phone{position:relative;width:393px;height:852px;border-radius:52px;overflow:hidden;background:var(--bg-chat)}
+.phone.fullscreen{border-radius:0}
+.dynamic-island{position:absolute;top:11px;left:50%;transform:translateX(-50%);
+  width:124px;height:37px;background:#000;border-radius:20px;z-index:200;
+  box-shadow:inset 0 -1px 2px rgba(255,255,255,.05),0 1px 0 rgba(255,255,255,.02)}
+
+.chat-bkg{position:absolute;inset:0;z-index:0;background:var(--bg-chat)}
+.chat-bkg img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* ── messages ── */
+.messages-scroll{position:absolute;inset:0;overflow:hidden;padding-top:98px;padding-bottom:77px;z-index:5}
+.messages-inner{display:flex;flex-direction:column;gap:12px;padding-bottom:8px;min-height:100%;justify-content:flex-start}
+
+.date-row{display:flex;align-items:center;justify-content:center;padding:23px 0 1px}
+.date-chip{background:#fff;border:.66px solid var(--shadow-baloon);border-radius:8px;
+  padding:3px 14px;font-size:13.5px;font-weight:600;color:var(--txt-primary);min-width:100px;text-align:center}
+
+.msg-row-me{display:flex;flex-direction:column;align-items:flex-end;padding:0 16px 4px}
+.msg-row-them{display:flex;flex-direction:column;align-items:flex-start;padding:0 16px 4px 8px}
+.avatar-wrap{display:flex;align-items:flex-end;gap:8px;padding-left:8px;margin-bottom:-4px}
+
+.bubble{position:relative;border-radius:12px;border:.66px solid var(--shadow-baloon);
+  max-width:287px;min-width:88px;box-shadow:0 .66px 0 var(--shadow-baloon);padding:5.5px 10px 6px}
+.bubble-me{background:var(--baloon-me)}
+.bubble-them{background:var(--baloon-them)}
+.tail-me,.tail-them{position:absolute;bottom:0;width:15px;height:18px;pointer-events:none;overflow:visible}
+.tail-me{right:-7.5px}
+.tail-them{left:-7.5px}
+
+.bubble-text{font-size:16px;line-height:20.16px;letter-spacing:-.208px;color:var(--txt-primary);font-weight:400;word-break:break-word;white-space:pre-wrap}
+.bubble-me .bubble-text::after{content:"";display:inline-block;width:3.6em;height:1px;vertical-align:middle}
+.bubble-them .bubble-text::after{content:"";display:inline-block;width:2.6em;height:1px;vertical-align:middle}
+
+.ts{position:absolute;bottom:3px;right:8.11px;display:flex;align-items:center;gap:2px;
+  font-size:12.4px;color:var(--txt-secondary);letter-spacing:.62px;white-space:nowrap;line-height:normal}
+.check{width:17px;height:17px;position:relative;overflow:hidden;flex-shrink:0}
+.check svg{display:block}
+
+/* ── status bar ── */
+.status-bar{position:absolute;top:0;left:0;width:393px;height:54px;display:flex;align-items:flex-end;
+  justify-content:space-between;padding:16px 31.33px 11px 41.5px;z-index:30;backdrop-filter:blur(25px);background:var(--panel)}
+.status-time{font-size:19px;font-weight:700;color:var(--txt-primary);letter-spacing:-.665px;width:54px;text-align:center}
+.status-right{display:flex;align-items:center;gap:7.35px;color:var(--txt-primary)}
+.status-right svg{display:block}
+
+/* ── header ── */
+.top-contact{position:absolute;top:0;left:0;width:393px;height:98px;display:flex;flex-direction:column;
+  align-items:flex-end;justify-content:flex-end;padding:4px 22px 4px 0;z-index:25;backdrop-filter:blur(25px);background:var(--panel)}
+.contacts-row{display:flex;align-items:center;justify-content:space-between;width:100%}
+.contacts-left{display:flex;align-items:center;width:272px}
+.chevron-wrap{width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#1b8cff;flex-shrink:0}
+.contact-block{display:flex;align-items:center;gap:10px;flex:1;min-width:0;margin-left:2px}
+.contact-photo{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;border:.212px solid var(--brd-avatar)}
+.contact-txt{display:flex;flex-direction:column;min-width:0}
+.contact-name{font-size:18px;font-weight:600;color:var(--txt-primary);letter-spacing:-.36px;white-space:nowrap}
+.contact-sub{font-size:13.5px;color:var(--txt-secondary);letter-spacing:-.12px;white-space:nowrap}
+.call-btns{display:flex;align-items:flex-start;gap:16px;padding-bottom:2px;flex-shrink:0;color:#0a0a0a}
+.call-btns svg{display:block}
+
+/* ── composer ── */
+.input-bar{position:absolute;bottom:0;right:0;width:393px;z-index:30;display:flex;flex-direction:column;align-items:center}
+.input-inner{display:flex;align-items:center;gap:8px;padding:5.5px 9px;position:relative;width:100%}
+.i-plus{flex-shrink:0;color:#0a0a0a}
+.i-field{flex:1;background:#fff;border:.33px solid var(--brd-input);border-radius:15px;
+  display:flex;align-items:center;gap:16px;padding:4px 9px 4px 10px;min-height:30px;min-width:0}
+.i-placeholder{flex:1;font-size:16px;line-height:21px;color:var(--txt-primary);letter-spacing:-.32px;opacity:.3}
+.i-icons{display:flex;align-items:center;gap:7px;flex-shrink:0;color:#0a0a0a}
+.i-icons svg,.i-field svg{display:block}
+.home-ind{display:flex;align-items:center;justify-content:center;padding:21px 0 8px;position:relative;width:100%}
+.home-bar{width:140px;height:5px;background:var(--txt-primary);border-radius:100px}
+
+/* ── typing indicator ── */
+.typing-bubble{background:var(--baloon-them);border:.66px solid var(--shadow-baloon);border-radius:12px;
+  box-shadow:0 .66px 0 var(--shadow-baloon);padding:10px 14px;position:relative;min-width:56px;
+  display:inline-flex;align-items:center;justify-content:center}
+.typing-dots{display:inline-flex;gap:4px;align-items:center}
+.typing-dots span{width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.35)}
