@@ -117,9 +117,9 @@ input,textarea,select{font:inherit}
 /* message list */
 /* Lucide: one stroke weight for the whole editor chrome */
 svg.lucide{stroke-width:1.9;flex:0 0 auto;display:block}
-.msg-item{position:relative;display:flex;gap:8px;padding:10px 10px 10px 2px;border-radius:10px;border:1px solid transparent;margin-bottom:2px;align-items:flex-start;cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s}
+.msg-item{position:relative;display:flex;gap:6px;padding:10px;border-radius:10px;border:1px solid transparent;margin-bottom:2px;align-items:flex-start;cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s}
 .msg-item:hover{background:var(--n-25)}
-.msg-item.sel{background:var(--accent-soft);border-color:var(--accent-soft-border);box-shadow:inset 3px 0 0 var(--accent)}
+.msg-item.sel{background:var(--accent-soft);border-color:var(--accent-soft-border);box-shadow:inset 3px 0 0 var(--accent);border-top-left-radius:0;border-bottom-left-radius:0}
 .msg-item.dragging{opacity:.4}
 .msg-item.drop{box-shadow:0 -2px 0 var(--accent)}
 .msg-item:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
