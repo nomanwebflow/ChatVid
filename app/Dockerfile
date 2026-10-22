@@ -5,7 +5,8 @@
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# npm install (not ci): tolerant of lockfile drift from Remotion dep bumps
+RUN npm install --no-audit --no-fund
 COPY . .
 RUN npm run build
 
@@ -27,7 +28,7 @@ ENV PORT=4000
 ENV REMOTION_BROWSER_CACHE=/app/.remotion-browser
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev --no-audit --no-fund
 # server needs the Remotion entry + composition source + public assets to bundle
 COPY server ./server
 COPY src ./src
