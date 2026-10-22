@@ -1,0 +1,27 @@
+# ChatVid — isolated deployment. Joins the host's existing shared Caddy network
+# (navex-shared) as an upstream only; publishes NO host ports and creates nothing
+# that collides with other services.
+services:
+  render:
+    build: .
+    image: chatvid-render:latest
+    container_name: chatvid-render
+    restart: unless-stopped
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+    volumes:
+      - chatvid_browser:/app/.remotion-browser   # cache the headless Chrome shell
+      - chatvid_tmp:/tmp                          # render outputs (auto-cleaned)
+    networks:
+      - navex-shared
+    # no "ports:" — reachable only inside navex-shared, proxied by the shared Caddy
+    mem_limit: 6g
+
+networks:
+  navex-shared:
+    external: true   # created by the existing navex stack; we only join it
+
+volumes:
+  chatvid_browser:
+  chatvid_tmp:

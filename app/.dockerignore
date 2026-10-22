@@ -1,0 +1,6 @@
+node_modules
+dist
+.git
+.remotion-browser
+*.log
+.DS_Store

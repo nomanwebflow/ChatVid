@@ -15,12 +15,16 @@ const ENTRY = path.join(ROOT, "src", "remotion", "index.ts");
 const OUT_DIR = path.join(os.tmpdir(), "chat-reel-renders");
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
-const PORT = 4000;
+const PORT = Number(process.env.PORT) || 4000;
+const DIST = path.join(ROOT, "dist"); // built editor, served in production
 const MAX_FRAMES = 60 * 30; // 60s cap (spec limit)
 const RETENTION_MS = 30 * 60 * 1000; // delete outputs after 30 min
 
 const app = express();
 app.use(express.json({ limit: "4mb" }));
+
+// serve the built editor (production). In dev, Vite serves it on 5173 and proxies /api.
+if (fs.existsSync(DIST)) app.use(express.static(DIST));
 
 // ── bundle once, reuse across renders ──
 let bundlePromise = null;
@@ -106,5 +110,12 @@ app.get("/api/renders/:id/download", (req, res) => {
   res.download(job.file, "chatvid.mp4");
 });
 
-// retry = just create a new job with the same payload (client resubmits)
-app.listen(PORT, () => console.log(`Render server on http://localhost:${PORT}`));
+// SPA fallback: any non-API GET returns the editor (production only)
+app.get(/^(?!\/api\/).*/, (_req, res, next) => {
+  const index = path.join(DIST, "index.html");
+  if (fs.existsSync(index)) return res.sendFile(index);
+  next();
+});
+
+// bind 0.0.0.0 so the reverse proxy (Caddy) can reach it inside the container
+app.listen(PORT, "0.0.0.0", () => console.log(`ChatVid server on :${PORT}`));
