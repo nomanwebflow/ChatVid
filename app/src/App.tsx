@@ -80,12 +80,11 @@ export default function App() {
     const el = stageRef.current;
     if (!el) return;
     const fit = () => {
-      // clientWidth/Height already exclude the element's padding box content area,
-      // so the player can never exceed the stage and spill under the toolbar.
-      const availW = el.clientWidth;
-      const availH = el.clientHeight;
+      // Center the phone with equal breathing room: 80px vertical clearance (prevents
+      // touching the top edge or the bottom floating playback pill), and 48px horizontal.
+      const availW = Math.max(120, el.clientWidth - 48);
+      const availH = Math.max(200, el.clientHeight - 84);
       if (availW <= 0 || availH <= 0) return;
-      // fill height first, fall back to width if too wide
       let h = availH;
       let w = (h * 9) / 16;
       if (w > availW) { w = availW; h = (w * 16) / 9; }
@@ -416,10 +415,24 @@ export default function App() {
         </div>
 
         {/* preview */}
-        <div className={`panel preview ${mobileTab === "preview" ? "active" : ""}`} style={{ background: undefined }}>
-          <div className="layout-toggle">
-            <button className={project.appearance.layout === "phone" ? "on" : ""} aria-pressed={project.appearance.layout === "phone"} onClick={() => setProject({ ...project, appearance: { ...project.appearance, layout: "phone" } })}><Smartphone size={13} /> Phone</button>
-            <button className={project.appearance.layout === "fullscreen" ? "on" : ""} aria-pressed={project.appearance.layout === "fullscreen"} onClick={() => setProject({ ...project, appearance: { ...project.appearance, layout: "fullscreen" } })}><Maximize2 size={13} /> Full screen</button>
+        <div className={`panel preview ${mobileTab === "preview" ? "active" : ""}`} style={{ background: project.appearance.sceneBackground || "#e9ede7" }}>
+          <div className="layout-toggle" role="group" aria-label="Layout mode">
+            <button
+              type="button"
+              className={`layout-btn ${project.appearance.layout === "phone" ? "on" : ""}`}
+              aria-pressed={project.appearance.layout === "phone"}
+              onClick={() => setProject({ ...project, appearance: { ...project.appearance, layout: "phone" } })}
+            >
+              <Smartphone size={13} /> <span>Phone</span>
+            </button>
+            <button
+              type="button"
+              className={`layout-btn ${project.appearance.layout === "fullscreen" ? "on" : ""}`}
+              aria-pressed={project.appearance.layout === "fullscreen"}
+              onClick={() => setProject({ ...project, appearance: { ...project.appearance, layout: "fullscreen" } })}
+            >
+              <Maximize2 size={13} /> <span>Full screen</span>
+            </button>
           </div>
           <div className="preview-stage" ref={stageRef} style={{ background: project.appearance.sceneBackground || "#e9ede7" }}>
             <div className="player-wrap" style={{ width: playerSize.w, height: playerSize.h }}>
@@ -438,16 +451,49 @@ export default function App() {
               />
             </div>
           </div>
-          <div className="preview-controls">
-            <button className="pc-btn" onClick={restart} title="Restart" aria-label="Restart"><SkipBack size={16} /></button>
-            <button className="pc-btn" onClick={toggle} title={playing ? "Pause" : "Play"} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause size={16} /> : <Play size={16} />}</button>
-            <input className="pc-seek" type="range" min={0} max={totalFrames - 1} value={Math.min(frame, totalFrames - 1)}
-              aria-label="Seek" onChange={(e) => seek(Number(e.target.value))} />
-            <span className="pc-time">{fmt(frame)} / {fmt(totalFrames)}</span>
-            <select className="pc-speed" aria-label="Playback speed" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
-              <option value={0.5}>0.5×</option><option value={1}>1×</option><option value={1.5}>1.5×</option><option value={2}>2×</option>
-            </select>
-          </div>
+          {/* floating pill playback bar */}
+          {(() => {
+            const progressPct = totalFrames > 1 ? (Math.min(frame, totalFrames - 1) / (totalFrames - 1)) * 100 : 0;
+            return (
+              <div className="preview-controls" role="region" aria-label="Playback controls">
+                <button className="pc-btn" onClick={restart} title="Restart" aria-label="Restart">
+                  <SkipBack size={15} />
+                </button>
+                <button
+                  className={`pc-btn play-btn ${playing ? "playing" : ""}`}
+                  onClick={toggle}
+                  title={playing ? "Pause" : "Play"}
+                  aria-label={playing ? "Pause" : "Play"}
+                >
+                  {playing ? <Pause size={15} /> : <Play size={15} />}
+                </button>
+                <input
+                  className="pc-seek"
+                  type="range"
+                  min={0}
+                  max={totalFrames - 1}
+                  value={Math.min(frame, totalFrames - 1)}
+                  style={{
+                    background: `linear-gradient(to right, var(--accent) ${progressPct}%, var(--gray-300) ${progressPct}%)`
+                  }}
+                  aria-label="Seek video"
+                  onChange={(e) => seek(Number(e.target.value))}
+                />
+                <span className="pc-time">{fmt(frame)} / {fmt(totalFrames)}</span>
+                <select
+                  className="pc-speed"
+                  aria-label="Playback speed"
+                  value={speed}
+                  onChange={(e) => setSpeed(Number(e.target.value))}
+                >
+                  <option value={0.5}>0.5×</option>
+                  <option value={1}>1×</option>
+                  <option value={1.5}>1.5×</option>
+                  <option value={2}>2×</option>
+                </select>
+              </div>
+            );
+          })()}
         </div>
 
         {/* properties */}

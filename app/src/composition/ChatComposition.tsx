@@ -21,9 +21,9 @@ function entryStyle(anim: Message["animation"], p: number): React.CSSProperties 
   const ease = 1 - Math.pow(1 - p, 3); // easeOutCubic
   switch (anim) {
     case "fade": return { opacity: ease };
-    case "slide": return { opacity: ease, transform: `translateY(${(1 - ease) * 18}px)` };
+    case "slide": return { opacity: ease, transform: `translateY(${Math.round((1 - ease) * 18)}px)` };
     case "pop":
-    default: return { opacity: ease, transform: `translateY(${(1 - ease) * 8}px) scale(${0.96 + 0.04 * ease})` };
+    default: return { opacity: ease, transform: `translateY(${Math.round((1 - ease) * 8)}px) scale(${0.96 + 0.04 * ease})` };
   }
 }
 
@@ -105,7 +105,7 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
       </div>
 
       <div className="messages-scroll" ref={viewportRef}>
-        <div className="messages-inner" ref={innerRef} style={{ transform: `translateY(${-offset}px)` }}>
+        <div className="messages-inner" ref={innerRef} style={{ transform: `translateY(${-Math.round(offset)}px)` }}>
           <div className="date-row"><div className="date-chip">Today</div></div>
 
           {rows.map(({ ev, i, visible, progress }) => {
