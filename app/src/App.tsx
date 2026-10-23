@@ -13,6 +13,7 @@ import { buildTimeline, framesToSeconds, currentEventIndex } from "./timeline";
 import { saveProject, loadProject } from "./db";
 import { ImportDialog } from "./ImportDialog";
 import { ExportDialog } from "./ExportDialog";
+import { EditorTimeline } from "./TimelineEditor";
 import "./editor.css";
 
 // ── undo/redo reducer ──
@@ -239,9 +240,6 @@ export default function App() {
   const partColor = (id: string) => project.participants.find((p) => p.id === id)?.color || "#888";
   const partName = (id: string) => project.participants.find((p) => p.id === id)?.name || "?";
 
-  // timeline strip px/frame scale
-  const PX_PER_FRAME = 3;
-  const trackWidth = Math.max(totalFrames * PX_PER_FRAME, 300);
 
   return (
     <div className="app">
@@ -363,33 +361,22 @@ export default function App() {
         </div>
       </div>
 
-      {/* timeline strip */}
-      <div className="timeline">
-        <div className="tl-head"><span>Timeline</span><span>{fmt(totalFrames)} total · {ordered.length} events</span></div>
-        <div className="tl-track">
-          <div className="tl-inner" style={{ width: trackWidth }}>
-            {tl.events.map((ev) => {
-              const w = Math.max((ev.readEnd - ev.revealStart) * PX_PER_FRAME, 44);
-              const left = ev.revealStart * PX_PER_FRAME;
-              const isSel = ev.message.id === selId;
-              const isCur = ev.message.id === curId;
-              return (
-                <div key={ev.message.id}>
-                  {ev.typingStart >= 0 && (
-                    <div className="tl-typing" style={{ left: ev.typingStart * PX_PER_FRAME, width: Math.max((ev.typingEnd - ev.typingStart) * PX_PER_FRAME, 10) }} />
-                  )}
-                  <div className={`tl-block ${isSel ? "sel" : ""}`} title={ev.message.text}
-                    style={{ left, width: w, background: partColor(ev.message.participantId), opacity: isCur ? 1 : 0.82 }}
-                    onClick={() => selectAndSeek(ev.message)}>
-                    {ev.message.text}
-                  </div>
-                </div>
-              );
-            })}
-            <div className="tl-playhead" style={{ left: frame * PX_PER_FRAME }} />
-          </div>
-        </div>
-      </div>
+      {/* proper editing timeline (premade component) */}
+      <EditorTimeline
+        project={project}
+        tl={tl}
+        frame={frame}
+        totalFrames={totalFrames}
+        playing={playing}
+        selId={selId}
+        curId={curId}
+        onSelect={selectAndSeek}
+        onSeek={seek}
+        onPlayToggle={toggle}
+        onRestart={restart}
+        onUpdateMessage={updateMessage}
+        onAddMessage={addMessage}
+      />
 
       {/* mobile tabs */}
       <div className="tabbar">

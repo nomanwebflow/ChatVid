@@ -27,3 +27,6 @@ npm-debug.log*
 
 # secrets
 cf-token
+
+# test artifacts
+.playwright-mcp/

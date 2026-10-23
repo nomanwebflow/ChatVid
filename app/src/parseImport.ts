@@ -4,6 +4,7 @@
 export type ParsedLine = {
   speaker: string | null; // null = continuation / unrecognized
   text: string;
+  time: string;           // per-message timestamp, e.g. "9:45 PM" ("" if none)
   ambiguous: boolean;     // no speaker and not a clear continuation
 };
 
@@ -16,6 +17,35 @@ export type ParseResult = {
 
 // Speaker prefix: up to ~24 chars, no line breaks, followed by a colon.
 const SPEAKER_RE = /^\s*([^\n:]{1,24}):\s?(.*)$/;
+
+// A leading timestamp from common WhatsApp export shapes. Returns the time
+// string (e.g. "9:45 PM") and the remaining line with the stamp removed.
+// Handles: "[9:45 PM] ", "[10/23/26, 9:45 PM] ", "9:45 PM - ",
+// "10/23/26, 9:45 PM - ", "23/10/2026 21:45 - ", "9:45 - ".
+const TIME_RE = /(\d{1,2}:\d{2}(?::\d{2})?\s?(?:[AaPp]\.?[Mm]\.?)?)/;
+function stripTimestamp(line: string): { time: string; rest: string } {
+  // bracketed:  [ ... <time> ]
+  let m = line.match(/^\s*\[([^\]]*?)\]\s*(.*)$/);
+  if (m) {
+    const t = m[1].match(TIME_RE);
+    if (t) return { time: normTime(t[1]), rest: m[2] };
+  }
+  // "<date/time> - <rest>"  (date optional)
+  m = line.match(/^\s*(.*?)\s[-–]\s(.*)$/);
+  if (m) {
+    const t = m[1].match(TIME_RE);
+    // only treat the prefix as a stamp if it is date/time-ish (has a colon time)
+    if (t && /^[\d/.,:\s APMapm–-]+$/.test(m[1])) return { time: normTime(t[1]), rest: m[2] };
+  }
+  return { time: "", rest: line };
+}
+// tidy "9:45 pm" / "9:45PM" -> "9:45 PM"
+function normTime(s: string): string {
+  const m = s.trim().match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s?([AaPp]\.?[Mm]\.?)?$/);
+  if (!m) return s.trim();
+  const ap = m[2] ? " " + m[2].replace(/\./g, "").toUpperCase() : "";
+  return m[1] + ap;
+}
 
 export function parseConversation(raw: string): ParseResult {
   const lines = raw.replace(/\r\n/g, "\n").split("\n");
@@ -31,16 +61,17 @@ export function parseConversation(raw: string): ParseResult {
       }
       continue;
     }
-    const m = line.match(SPEAKER_RE);
+    const { time, rest } = stripTimestamp(line);
+    const m = rest.match(SPEAKER_RE);
     if (m) {
       const speaker = m[1].trim();
       if (!speakers.includes(speaker)) speakers.push(speaker);
-      out.push({ speaker, text: m[2], ambiguous: false });
+      out.push({ speaker, text: m[2], time, ambiguous: false });
     } else if (out.length && out[out.length - 1].speaker !== null) {
-      // continuation of the previous speaker's message
+      // continuation of the previous speaker's message (timestamp, if any, ignored)
       out[out.length - 1].text += (out[out.length - 1].text ? "\n" : "") + line;
     } else {
-      out.push({ speaker: null, text: line, ambiguous: true });
+      out.push({ speaker: null, text: line, time, ambiguous: true });
     }
   }
 
