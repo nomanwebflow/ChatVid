@@ -59,6 +59,11 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
   // header sub-text: "typing…" while a left-side typing indicator is up
   const sub = typingPart && typingPart.side === "left" ? "typing…" : project.appearance.contactSub;
 
+  // status-bar clock follows the chat: first message's timestamp, AM/PM stripped
+  // (iOS shows "12:47", not "12:47 AM"). Falls back to 9:41 if no timestamps.
+  const firstTs = project.messages.find((m) => m.timestamp)?.timestamp;
+  const statusTime = firstTs ? firstTs.replace(/\s?[AaPp]\.?[Mm]\.?$/, "").trim() : "9:41";
+
   // ── auto-scroll: keep the newest message in view as the chat grows ──
   // Deterministic for render: measure the content and viewport each frame and
   // pin the content to the bottom. The per-message entry animation grows each
@@ -157,7 +162,7 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
       </div>
 
       <div className="status-bar">
-        <span className="status-time">9:41</span>
+        <span className="status-time">{statusTime}</span>
         <span className="status-right"><StatusIcons /></span>
       </div>
 
