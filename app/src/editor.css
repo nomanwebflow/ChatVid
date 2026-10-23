@@ -4,76 +4,139 @@
    values. shadcn's CSS-variable method, no Tailwind dependency.
    ============================================================ */
 :root{
-  /* ---- color ramps ---- */
-  /* neutral (warm green-grey) — surfaces, text, borders */
-  --n-0:#ffffff;
-  --n-25:#f8faf7;   /* subtle hover */
-  --n-50:#f4f6f1;   /* app background */
-  --n-100:#eef1ec;  /* faint fills, tracks */
-  --n-150:#e4e8e2;  /* borders */
-  --n-200:#d9e0d9;  /* strong border / icon hover */
-  --n-400:#8a948c;  /* muted icon */
-  --n-500:#55605a;  /* secondary text */
-  --n-700:#2b332e;
-  --n-900:#141a17;  /* primary text / ink */
+  /* ---- Colors ---- */
+  /* Brand Green (WhatsApp style) */
+  --brand-50:#eaf5ed;
+  --brand-100:#cfe8d6;
+  --brand-500:#1f7a4d;
+  --brand-600:#18663f;
+  --brand-700:#125131;
 
-  /* brand (green) */
-  --brand-50:#eaf4ee;
-  --brand-100:#cfe6d8;
-  --brand-500:#1f7a4d; /* primary accent */
-  --brand-600:#1a6a43;
-  --brand-900:#0c3a24;
+  /* Accent Blue (for "You") */
+  --blue-50:#eff6ff;
+  --blue-100:#dbeafe;
+  --blue-500:#2563eb;
+  --blue-600:#1d4ed8;
 
-  /* danger */
-  --danger-50:#f6ded9;
-  --danger-500:#b4443a;
+  /* Accent Purple (for typing clips) */
+  --purple-50:#f5f3ff;
+  --purple-100:#ede9fe;
+  --purple-500:#7c3aed;
+  --purple-600:#6d28d9;
 
-  /* warning */
-  --warn-bg:#fdf3ec;
-  --warn-fg:#9a5a12;
+  /* Neutral scale (calm warm-grey tint) */
+  --gray-0:#ffffff;
+  --gray-50:#f8faf8;   /* subtle hover, card bg */
+  --gray-100:#f1f4f1;  /* app background, muted tracks */
+  --gray-200:#e4e9e4;  /* hairline borders, dividers */
+  --gray-300:#d0d8d1;  /* input/control borders */
+  --gray-400:#93a196;  /* muted text, placeholder, inactive icons */
+  --gray-500:#58685c;  /* secondary text */
+  --gray-700:#2b362e;  /* headings */
+  --gray-900:#131915;  /* primary ink */
 
-  /* ---- semantic aliases (what components use) ---- */
-  --ink:var(--n-900);
-  --ink-2:var(--n-500);
-  --line:var(--n-150);
-  --line-2:var(--n-100);
-  --surface:var(--n-0);
-  --bg:var(--n-50);
+  /* Dark Timeline Neutral scale */
+  --tl-bg:#121513;
+  --tl-surface:#181c19;
+  --tl-surface-hover:#222824;
+  --tl-border:#242c26;
+  --tl-text-muted:#728275;
+  --tl-text:#d2ddd4;
+
+  /* Danger & Warning */
+  --danger-50:#fef2f2;
+  --danger-500:#dc2626;
+  --warn-bg:#fefce8;
+  --warn-fg:#854d0e;
+
+  /* Semantic Aliases */
+  --ink:var(--gray-900);
+  --ink-2:var(--gray-500);
+  --ink-muted:var(--gray-400);
+  --line:var(--gray-200);
+  --line-2:var(--gray-100);
+  --surface:var(--gray-0);
+  --bg:var(--gray-100);
+
   --accent:var(--brand-500);
   --accent-hover:var(--brand-600);
-  --accent-ink:var(--brand-900);
   --accent-soft:var(--brand-50);
   --accent-soft-border:var(--brand-100);
+
+  --you-accent:var(--blue-500);
+  --you-soft:var(--blue-50);
+  --you-border:var(--blue-100);
+
+  --typing-accent:var(--purple-500);
+  --typing-soft:var(--purple-50);
+
   --danger:var(--danger-500);
   --chip:var(--brand-50);
   --focus:var(--brand-500);
+  --focus-ring:0 0 0 2px rgba(31,122,77,.28);
 
-  /* ---- spacing scale (4px base) ---- */
-  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-10:40px;
+  /* Legacy aliases for backward compatibility */
+  --n-0:var(--gray-0);
+  --n-25:var(--gray-50);
+  --n-50:var(--gray-100);
+  --n-100:var(--gray-100);
+  --n-150:var(--gray-200);
+  --n-200:var(--gray-300);
+  --n-400:var(--gray-400);
+  --n-500:var(--gray-500);
+  --n-700:var(--gray-700);
+  --n-900:var(--gray-900);
 
-  /* ---- type scale ---- */
-  --fs-xs:11px;   /* labels, meta */
-  --fs-sm:12px;   /* captions, chips */
-  --fs-base:13px; /* body / controls */
-  --fs-md:15px;   /* brand, emphasis */
-  --fs-lg:16px;   /* dialog titles */
-  --lh-tight:1.2; --lh-base:1.4;
-  --fw-medium:600; --fw-bold:700;
+  /* ---- Spacing Scale (4px base strictly: 4, 8, 12, 16, 20, 24, 32) ---- */
+  --sp-1:4px;
+  --sp-2:8px;
+  --sp-3:12px;
+  --sp-4:16px;
+  --sp-5:20px;
+  --sp-6:24px;
+  --sp-8:32px;
 
-  /* ---- radius scale ---- */
-  --r-xs:6px; --r-sm:7px; --r-md:9px; --r-lg:12px; --r-xl:16px; --r-pill:999px;
+  /* ---- Radius (3 sizes strictly) ---- */
+  --r-sm:6px;     /* inputs, chips, meta badges */
+  --r-md:8px;     /* buttons, cards, segmented controls */
+  --r-lg:12px;    /* panels, dialogs, floating controls */
+  --r-pill:9999px; /* circular avatars & pill badges */
 
-  /* ---- elevation ---- */
-  --sh-1:0 1px 2px rgba(20,26,23,.06);
-  --sh-2:0 2px 6px -2px rgba(20,26,23,.16);
-  --sh-pop:0 8px 24px -8px rgba(20,26,23,.22);
-  --sh-modal:0 30px 80px -20px rgba(20,26,23,.42);
+  /* Legacy radius aliases */
+  --r-xs:var(--r-sm);
+  --r-xl:var(--r-lg);
 
-  /* ---- motion ---- */
-  --ease:.12s ease;
+  /* ---- Shadows (2 levels) ---- */
+  --sh-sm:0 1px 2px rgba(19,25,21,.05);
+  --sh-1:var(--sh-sm);
+  --sh-floating:0 4px 16px -2px rgba(19,25,21,.1), 0 2px 4px -1px rgba(19,25,21,.06);
+  --sh-2:var(--sh-floating);
+  --sh-pop:var(--sh-floating);
+  --sh-modal:0 16px 36px -8px rgba(19,25,21,.25);
 
-  --font-sans:-apple-system,"SF Pro Text","Helvetica Neue",system-ui,Arial,sans-serif;
-  --font-mono:ui-monospace,Menlo,"SF Mono",monospace;
+  /* ---- Typography ---- */
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+
+  --fs-xs:11px;
+  --fs-sm:12px;
+  --fs-base:13px;
+  --fs-md:14px;
+  --fs-lg:16px;
+
+  --fw-normal:400;
+  --fw-medium:500;
+  --fw-semibold:600;
+  --fw-bold:600; /* capped at 600 per type rules */
+
+  --lh-tight:1.2;
+  --lh-base:1.4;
+
+  /* ---- Motion ---- */
+  --ease:cubic-bezier(0.2,0,0,1);
+  --dur-fast:120ms;
+  --dur-base:180ms;
+  --dur-smooth:240ms;
 }
 *{box-sizing:border-box}
 html,body,#root{height:100%;margin:0}
