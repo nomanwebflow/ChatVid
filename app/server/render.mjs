@@ -2,7 +2,7 @@
 // composition to a real 1080x1920 H.264 MP4, reports progress, serves download.
 import express from "express";
 import { bundle } from "@remotion/bundler";
-import { renderMedia, selectComposition } from "@remotion/renderer";
+import { renderMedia, renderStill, selectComposition } from "@remotion/renderer";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
@@ -108,6 +108,32 @@ app.get("/api/renders/:id/download", (req, res) => {
   const job = jobs.get(req.params.id);
   if (!job || !job.file || !fs.existsSync(job.file)) return res.status(404).json({ error: "File not available." });
   res.download(job.file, "chatvid.mp4");
+});
+
+// ── single-frame screenshot (PNG) ──
+// Renders one frame at full 1080x1920 via the same bundle as the video, so the
+// screenshot matches the export exactly. Synchronous: one frame is quick.
+app.post("/api/stills", async (req, res) => {
+  const project = req.body?.project;
+  const err = validate(project);
+  if (err) return res.status(400).json({ error: err });
+  const file = path.join(OUT_DIR, `${randomUUID()}.png`);
+  try {
+    const serveUrl = await getBundle();
+    const composition = await selectComposition({ serveUrl, id: "ChatReel", inputProps: { project } });
+    // default to the last frame (fully-revealed chat); allow an explicit frame.
+    const last = Math.max(0, composition.durationInFrames - 1);
+    let frame = Number(req.body?.frame);
+    if (!Number.isFinite(frame)) frame = last;
+    frame = Math.min(last, Math.max(0, Math.round(frame)));
+    await renderStill({ composition, serveUrl, output: file, frame, inputProps: { project } });
+    res.download(file, "chatvid.png", () => {
+      try { fs.existsSync(file) && fs.unlinkSync(file); } catch {}
+    });
+  } catch (e) {
+    try { fs.existsSync(file) && fs.unlinkSync(file); } catch {}
+    res.status(500).json({ error: (e && e.message) || "Screenshot failed." });
+  }
 });
 
 // SPA fallback: any non-API GET returns the editor (production only)

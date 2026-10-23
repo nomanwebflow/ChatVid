@@ -229,6 +229,11 @@ svg.lucide{stroke-width:1.9;flex:0 0 auto;display:block}
 .hint code,.export-specs code{background:var(--line-2);border-radius:5px;padding:1px 5px;font-size:var(--fs-sm)}
 
 /* export dialog */
+.export-modes{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;margin-bottom:16px;background:var(--line-2);border-radius:var(--r-md)}
+.export-modes button{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;border:none;border-radius:var(--r-sm);background:transparent;color:var(--ink-2);font-size:var(--fs-base);font-weight:var(--fw-medium);cursor:pointer;transition:background var(--ease),color var(--ease)}
+.export-modes button.on{background:var(--n-0);color:var(--ink);box-shadow:var(--sh-1)}
+.export-modes button:disabled{opacity:.5;cursor:default}
+.export-modes button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 .export-specs{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-bottom:4px}
 .export-specs>div{display:flex;flex-direction:column;gap:2px;padding:10px 12px;background:var(--line-2);border-radius:9px}
 .export-specs span{font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2)}
