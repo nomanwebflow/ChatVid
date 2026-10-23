@@ -6,7 +6,7 @@ import type { Project, Message, EntryAnimation } from "./types";
 import {
   Undo2, Redo2, ClipboardPaste, RotateCcw, Download, Plus, Copy, Trash2, GripVertical, Ellipsis, CheckCheck,
   Play, Pause, SkipBack, Smartphone, Maximize2, Upload, ListOrdered, SlidersHorizontal, MessageSquarePlus,
-  Pencil, Check, ChevronDown, Loader2, TriangleAlert,
+  Pencil, Check, ChevronDown, Loader2, TriangleAlert, X,
 } from "lucide-react";
 import { FPS, uid } from "./types";
 import { createSampleProject } from "./sampleProject";
@@ -66,6 +66,7 @@ export default function App() {
   const [saveState, setSaveState] = useState<"saved" | "saving" | "dirty">("saved");
   const [mobileTab, setMobileTab] = useState<"list" | "preview" | "props">("preview");
   const [isExporting, setIsExporting] = useState(false);
+  const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string; type?: "info" | "success" | "error" }[]>([]);
 
   const showToast = useCallback((message: string, type: "info" | "success" | "error" = "info") => {
@@ -339,6 +340,16 @@ export default function App() {
           </div>
           <button
             type="button"
+            className={`tb-btn tb-drawer-btn ${inspectorDrawerOpen ? "active" : ""}`}
+            onClick={() => setInspectorDrawerOpen(!inspectorDrawerOpen)}
+            title="Toggle Inspector drawer"
+            aria-label="Toggle Inspector drawer"
+            aria-expanded={inspectorDrawerOpen}
+          >
+            <SlidersHorizontal size={IC} /> <span className="lbl">Inspector</span>
+          </button>
+          <button
+            type="button"
             className={`tb-btn primary ${isExporting ? "is-loading" : ""}`}
             onClick={() => setExportOpen(true)}
             title={isExporting ? "Export in progress…" : "Export video or image (⌘E)"}
@@ -518,14 +529,26 @@ export default function App() {
         </div>
 
         {/* properties */}
-        <div className={`panel right ${mobileTab === "props" ? "active" : ""}`}>
+        {/* properties / inspector */}
+        <div className={`panel right ${inspectorDrawerOpen ? "drawer-open" : ""} ${mobileTab === "props" ? "active" : ""}`}>
           <div className="panel-head">
             <h2>Inspector</h2>
-            {sel && (
-              <span className="count">
-                Message {project.messages.findIndex((x) => x.id === sel.id) + 1}
-              </span>
-            )}
+            <div className="panel-head-actions">
+              {sel && (
+                <span className="count">
+                  Message {project.messages.findIndex((x) => x.id === sel.id) + 1}
+                </span>
+              )}
+              <button
+                type="button"
+                className="icon-btn drawer-close-btn"
+                onClick={() => setInspectorDrawerOpen(false)}
+                title="Close Inspector drawer"
+                aria-label="Close Inspector drawer"
+              >
+                <X size={15} />
+              </button>
+            </div>
           </div>
           <div className="panel-body">
             {sel ? (
@@ -537,6 +560,14 @@ export default function App() {
             <AppearanceProps project={project} onChange={setProject} />
           </div>
         </div>
+
+        {inspectorDrawerOpen && (
+          <div
+            className="drawer-scrim"
+            onClick={() => setInspectorDrawerOpen(false)}
+            aria-hidden="true"
+          />
+        )}
       </div>
 
       {/* proper editing timeline (premade component) */}
@@ -605,6 +636,16 @@ export default function App() {
             <span>{t.message}</span>
           </div>
         ))}
+      </div>
+
+      {/* "Best used on desktop" notice when screen width < 900px */}
+      <div className="desktop-notice" aria-live="polite">
+        <div className="desktop-notice-card">
+          <Smartphone size={32} className="desktop-notice-icon" aria-hidden="true" />
+          <h3>Best used on desktop</h3>
+          <p>ChatVid’s video timeline and multi-panel editor requires a screen width of at least 900px.</p>
+          <p className="desktop-notice-hint">Please widen your browser window or switch to a desktop computer.</p>
+        </div>
       </div>
     </div>
   );
