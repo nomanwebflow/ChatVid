@@ -239,7 +239,6 @@ export default function App() {
     return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}.${String(Math.floor((s % 1) * 10))}`;
   };
 
-  const partColor = (id: string) => project.participants.find((p) => p.id === id)?.color || "#888";
   const partName = (id: string) => project.participants.find((p) => p.id === id)?.name || "?";
 
 
@@ -354,11 +353,13 @@ export default function App() {
             {ordered.map((m) => {
               const part = project.participants.find((p) => p.id === m.participantId);
               const isMe = part?.side === "right";
-              const cls = ["msg-item", isMe ? "me" : "", selId === m.id ? "sel" : "", curId === m.id && playing ? "cur" : "",
+              const avColor = isMe ? "var(--blue-500)" : "var(--brand-500)";
+              const cls = ["msg-item", isMe ? "me" : "them", selId === m.id ? "sel" : "", curId === m.id && playing ? "cur" : "",
                 overId === m.id && dragId && dragId !== m.id ? "drop" : "", dragId === m.id ? "dragging" : ""].join(" ");
               return (
                 <div key={m.id} className={cls} role="button" tabIndex={0} draggable
-                  aria-label={`${part?.name ?? "?"}: ${m.text || "empty message"}`} aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Delete"
+                  aria-label={`${part?.name ?? "?"}: ${m.text || "empty message"}`}
+                  aria-selected={selId === m.id}
                   onClick={() => selectAndSeek(m)}
                   onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", m.id); }}
                   onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverId(m.id); } }}
@@ -368,21 +369,39 @@ export default function App() {
                     if (e.target !== e.currentTarget) return;
                     const el = e.currentTarget;
                     if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) { e.preventDefault(); move(m.id, e.key === "ArrowUp" ? -1 : 1); return; }
-                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectAndSeek(m); }
-                    else if (e.key === "ArrowDown") { e.preventDefault(); (el.nextElementSibling as HTMLElement | null)?.focus(); }
-                    else if (e.key === "ArrowUp") { e.preventDefault(); (el.previousElementSibling as HTMLElement | null)?.focus(); }
+                    if (e.key === "Enter") { e.preventDefault(); selectAndSeek(m); document.getElementById("mtext")?.focus(); }
+                    else if (e.key === " ") { e.preventDefault(); selectAndSeek(m); }
+                    else if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      const idx = ordered.findIndex((item) => item.id === m.id);
+                      const next = ordered[idx + 1];
+                      if (next) { selectAndSeek(next); (el.nextElementSibling as HTMLElement | null)?.focus(); }
+                    }
+                    else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      const idx = ordered.findIndex((item) => item.id === m.id);
+                      const prev = ordered[idx - 1];
+                      if (prev) { selectAndSeek(prev); (el.previousElementSibling as HTMLElement | null)?.focus(); }
+                    }
                     else if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteMessage(m.id); }
                   }}>
-                  <span className="msg-grip" aria-hidden="true" title="Drag to reorder"><GripVertical size={14} /></span>
-                  <span className="msg-av" style={{ background: partColor(m.participantId) }} aria-hidden="true">{partName(m.participantId).charAt(0).toUpperCase()}</span>
+                  <span className="msg-grip" aria-hidden="true" title="Drag to reorder"><GripVertical size={13} /></span>
+                  <span className="msg-av" style={{ background: avColor }} aria-hidden="true">{partName(m.participantId).charAt(0).toUpperCase()}</span>
                   <div className="msg-main">
                     <div className="msg-text">{m.text || <em>Empty message</em>}</div>
                     <div className="msg-meta">
                       <span className="msg-who">{partName(m.participantId)}</span>
                       {m.typingDurationMs > 0 && (
-                        <span className="meta-chip" title={`Shows a typing indicator for ${(m.typingDurationMs / 1000).toFixed(1)}s`}><Ellipsis size={12} />{(m.typingDurationMs / 1000).toFixed(1)}s</span>
+                        <span className="meta-chip typing" title={`Typing: ${(m.typingDurationMs / 1000).toFixed(1)}s`}>
+                          <Ellipsis size={11} />
+                          <span>{(m.typingDurationMs / 1000).toFixed(1)}s</span>
+                        </span>
                       )}
-                      {m.readReceipt && <span className="meta-chip" title="Read receipt (ticks)"><CheckCheck size={12} /></span>}
+                      {m.readReceipt && (
+                        <span className="meta-chip read-receipt" title="Read receipt (ticks)">
+                          <CheckCheck size={11} />
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="msg-actions">
