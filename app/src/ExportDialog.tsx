@@ -3,7 +3,14 @@ import type { Project } from "./types";
 import { framesToSeconds } from "./timeline";
 import { X, TriangleAlert, Film, Image } from "lucide-react";
 
-type Props = { project: Project; totalFrames: number; onClose: () => void };
+type Props = {
+  project: Project;
+  totalFrames: number;
+  onClose: () => void;
+  onExportStart?: () => void;
+  onExportFinish?: () => void;
+  onExportError?: (error: string) => void;
+};
 type Phase = "settings" | "queued" | "preparing" | "rendering" | "finalizing" | "completed" | "failed";
 type Mode = "video" | "image";
 
@@ -12,7 +19,14 @@ const LABEL: Record<string, string> = {
   finalizing: "Finalizing…", completed: "Done", failed: "Failed",
 };
 
-export function ExportDialog({ project, totalFrames, onClose }: Props) {
+export function ExportDialog({
+  project,
+  totalFrames,
+  onClose,
+  onExportStart,
+  onExportFinish,
+  onExportError,
+}: Props) {
   const [mode, setMode] = useState<Mode>("video");
   const [phase, setPhase] = useState<Phase>("settings");
   const [progress, setProgress] = useState(0);
@@ -25,7 +39,9 @@ export function ExportDialog({ project, totalFrames, onClose }: Props) {
 
   // Screenshot: render one frame server-side and download the PNG directly.
   async function shoot() {
-    setError(null); setShooting(true);
+    setError(null);
+    setShooting(true);
+    onExportStart?.();
     try {
       const r = await fetch("/api/stills", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -41,15 +57,21 @@ export function ExportDialog({ project, totalFrames, onClose }: Props) {
       a.href = url; a.download = "chatvid.png";
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      onExportFinish?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "The render server is not reachable. Run: npm run server");
+      const msg = e instanceof Error ? e.message : "The render server is not reachable. Run: npm run server";
+      setError(msg);
+      onExportError?.(msg);
     } finally {
       setShooting(false);
     }
   }
 
   async function start() {
-    setError(null); setProgress(0); setPhase("queued");
+    setError(null);
+    setProgress(0);
+    setPhase("queued");
+    onExportStart?.();
     try {
       const r = await fetch("/api/renders", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -60,7 +82,9 @@ export function ExportDialog({ project, totalFrames, onClose }: Props) {
       setJobId(data.id);
     } catch (e) {
       setPhase("failed");
-      setError(e instanceof Error ? e.message : "The render server is not reachable. Run: npm run server");
+      const msg = e instanceof Error ? e.message : "The render server is not reachable. Run: npm run server";
+      setError(msg);
+      onExportError?.(msg);
     }
   }
 
@@ -75,12 +99,20 @@ export function ExportDialog({ project, totalFrames, onClose }: Props) {
         setProgress(d.progress || 0);
         setPhase(d.status as Phase);
         if (d.status === "completed" || d.status === "failed") {
-          if (d.status === "failed") setError(d.error || "Render failed.");
+          if (d.status === "completed") {
+            onExportFinish?.();
+          } else {
+            const err = d.error || "Render failed.";
+            setError(err);
+            onExportError?.(err);
+          }
           if (pollRef.current) clearInterval(pollRef.current);
         }
       } catch (e) {
         setPhase("failed");
-        setError(e instanceof Error ? e.message : "Lost connection to the render server.");
+        const msg = e instanceof Error ? e.message : "Lost connection to the render server.";
+        setError(msg);
+        onExportError?.(msg);
         if (pollRef.current) clearInterval(pollRef.current);
       }
     };

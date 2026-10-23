@@ -6,7 +6,7 @@ import type { Project, Message, EntryAnimation } from "./types";
 import {
   Undo2, Redo2, ClipboardPaste, RotateCcw, Download, Plus, Copy, Trash2, GripVertical, Ellipsis, CheckCheck,
   Play, Pause, SkipBack, Smartphone, Maximize2, Upload, ListOrdered, SlidersHorizontal, MessageSquarePlus,
-  Pencil, Check, ChevronDown,
+  Pencil, Check, ChevronDown, Loader2, TriangleAlert,
 } from "lucide-react";
 import { FPS, uid } from "./types";
 import { createSampleProject } from "./sampleProject";
@@ -65,6 +65,16 @@ export default function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "dirty">("saved");
   const [mobileTab, setMobileTab] = useState<"list" | "preview" | "props">("preview");
+  const [isExporting, setIsExporting] = useState(false);
+  const [toasts, setToasts] = useState<{ id: string; message: string; type?: "info" | "success" | "error" }[]>([]);
+
+  const showToast = useCallback((message: string, type: "info" | "success" | "error" = "info") => {
+    const id = Math.random().toString(36).slice(2);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3200);
+  }, []);
   const playerRef = useRef<PlayerRef>(null);
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -215,6 +225,7 @@ export default function App() {
     const p = createSampleProject();
     setProject(p);
     setSelId(p.messages[0]?.id ?? null);
+    showToast("Reset to sample conversation", "info");
   }
 
   // ── preview controls ──
@@ -327,12 +338,22 @@ export default function App() {
             )}
           </div>
           <button
-            className="tb-btn primary"
+            type="button"
+            className={`tb-btn primary ${isExporting ? "is-loading" : ""}`}
             onClick={() => setExportOpen(true)}
-            title="Export video (⌘E)"
-            aria-label="Export video (⌘E)"
+            title={isExporting ? "Export in progress…" : "Export video or image (⌘E)"}
+            aria-label={isExporting ? "Export in progress" : "Export video or image (⌘E)"}
+            disabled={isExporting}
           >
-            <Download size={IC} /> <span>Export</span>
+            {isExporting ? (
+              <>
+                <Loader2 size={IC} className="spin" /> <span>Exporting…</span>
+              </>
+            ) : (
+              <>
+                <Download size={IC} /> <span>Export</span>
+              </>
+            )}
           </button>
         </div>
       </header>
@@ -546,13 +567,45 @@ export default function App() {
         <ImportDialog
           project={project}
           onClose={() => setImportOpen(false)}
-          onImport={(msgs) => { setProject({ ...project, messages: msgs }); setSelId(msgs[0]?.id ?? null); setImportOpen(false); }}
+          onImport={(msgs) => {
+            setProject({ ...project, messages: msgs });
+            setSelId(msgs[0]?.id ?? null);
+            setImportOpen(false);
+            showToast(`Imported ${msgs.length} messages successfully`, "success");
+          }}
         />
       )}
 
       {exportOpen && (
-        <ExportDialog project={project} totalFrames={totalFrames} onClose={() => setExportOpen(false)} />
+        <ExportDialog
+          project={project}
+          totalFrames={totalFrames}
+          onClose={() => setExportOpen(false)}
+          onExportStart={() => {
+            setIsExporting(true);
+            showToast("Export render started…", "info");
+          }}
+          onExportFinish={() => {
+            setIsExporting(false);
+            showToast("Export completed successfully!", "success");
+          }}
+          onExportError={(msg) => {
+            setIsExporting(false);
+            showToast(`Export error: ${msg}`, "error");
+          }}
+        />
       )}
+
+      {/* Floating Toast Feedback Notifications */}
+      <div className="toast-container" aria-live="polite">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast ${t.type || "info"}`}>
+            {t.type === "success" && <Check size={14} className="toast-icon" />}
+            {t.type === "error" && <TriangleAlert size={14} className="toast-icon" />}
+            <span>{t.message}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
