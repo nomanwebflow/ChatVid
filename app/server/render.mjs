@@ -7,6 +7,7 @@ import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { buildServer } from "./mcp-tools.mjs";
+import { mountOAuth, requireAuth } from "./oauth.mjs";
 import {
   ROOT_DIR,
   TEMP_DIR,
@@ -23,8 +24,14 @@ const PORT = Number(process.env.PORT) || 4000;
 const DIST = path.join(ROOT_DIR, "dist"); // built editor, served in production
 const RETENTION_MS = 30 * 60 * 1000; // delete outputs after 30 min
 
+const PUBLIC_BASE = process.env.CHATVID_WEB_URL || "https://chatvid.nomanahmed.io";
+
 const app = express();
 app.use(express.json({ limit: "4mb" }));
+app.use(express.urlencoded({ extended: true })); // OAuth token endpoint is form-encoded
+
+// OAuth 2.1 authorization server + discovery for the MCP connector
+mountOAuth(app, PUBLIC_BASE);
 
 // serve the built editor (production). In dev, Vite serves it on 5173 and proxies /api.
 if (fs.existsSync(DIST)) app.use(express.static(DIST));
@@ -147,8 +154,8 @@ async function handleMcp(req, res) {
     if (!res.headersSent) res.status(500).json({ jsonrpc: "2.0", error: { code: -32603, message: String(e?.message || e) }, id: null });
   }
 }
-app.post("/mcp", handleMcp);
-app.get("/mcp", handleMcp);
+app.post("/mcp", requireAuth(PUBLIC_BASE), handleMcp);
+app.get("/mcp", requireAuth(PUBLIC_BASE), handleMcp);
 
 // SPA fallback: any non-API, non-MCP GET returns the editor (production only)
 app.get(/^(?!\/(api|mcp)\b).*/, (_req, res, next) => {

@@ -10,6 +10,8 @@ services:
     environment:
       - PORT=4000
       - NODE_ENV=production
+      - CHATVID_WEB_URL=https://chatvid.nomanahmed.io
+      - CHATVID_OAUTH_SECRET=${CHATVID_OAUTH_SECRET:?set CHATVID_OAUTH_SECRET in /opt/chatvid/.env}
     volumes:
       - chatvid_browser:/app/.remotion-browser   # cache the headless Chrome shell
       - chatvid_tmp:/tmp                          # render outputs (auto-cleaned)
