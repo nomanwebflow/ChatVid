@@ -6,6 +6,7 @@ import type { Project, Message, EntryAnimation } from "./types";
 import {
   Undo2, Redo2, ClipboardPaste, RotateCcw, Download, Plus, Copy, Trash2, GripVertical, Ellipsis, CheckCheck,
   Play, Pause, SkipBack, Smartphone, Maximize2, Upload, ListOrdered, SlidersHorizontal, MessageSquarePlus,
+  Pencil, Check,
 } from "lucide-react";
 import { FPS, uid } from "./types";
 import { createSampleProject } from "./sampleProject";
@@ -119,12 +120,13 @@ export default function App() {
     return () => clearTimeout(h);
   }, [project]);
 
-  // ── keyboard: undo/redo ──
+  // ── keyboard: undo/redo/export ──
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); dispatch({ t: e.shiftKey ? "redo" : "undo" }); }
       if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); dispatch({ t: "redo" }); }
+      if (mod && e.key.toLowerCase() === "e") { e.preventDefault(); setExportOpen(true); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -244,18 +246,98 @@ export default function App() {
   return (
     <div className="app">
       {/* toolbar */}
-      <div className="toolbar">
-        <div className="brand"><span className="dot" /> ChatVid</div>
-        <input className="title-input" aria-label="Project name" value={project.title}
-          onChange={(e) => setProject({ ...project, title: e.target.value }, true)} />
-        <button className="tb-btn" onClick={() => dispatch({ t: "undo" })} disabled={!state.past.length} title="Undo (⌘Z)" aria-label="Undo"><Undo2 size={IC} /> <span className="lbl">Undo</span></button>
-        <button className="tb-btn" onClick={() => dispatch({ t: "redo" })} disabled={!state.future.length} title="Redo (⌘⇧Z)" aria-label="Redo"><Redo2 size={IC} /> <span className="lbl">Redo</span></button>
-        <button className="tb-btn" onClick={() => setImportOpen(true)}><ClipboardPaste size={IC} /> Paste import</button>
-        <button className="tb-btn" onClick={resetProject}><RotateCcw size={IC} /> Reset</button>
+      <header className="toolbar" role="toolbar" aria-label="Editor toolbar">
+        <div className="tb-group brand-group">
+          <div className="brand"><span className="dot" aria-hidden="true" /> ChatVid</div>
+          <div className="title-wrap" title="Click to rename project">
+            <input
+              className="title-input"
+              aria-label="Project name"
+              value={project.title}
+              onChange={(e) => setProject({ ...project, title: e.target.value }, true)}
+            />
+            <Pencil size={12} className="title-pencil-hint" aria-hidden="true" />
+          </div>
+        </div>
+
+        <div className="tb-divider" aria-hidden="true" />
+
+        {/* History actions group */}
+        <div className="tb-group" role="group" aria-label="History actions">
+          <button
+            className="tb-btn"
+            onClick={() => dispatch({ t: "undo" })}
+            disabled={!state.past.length}
+            title="Undo (⌘Z)"
+            aria-label="Undo (⌘Z)"
+          >
+            <Undo2 size={IC} /> <span className="lbl">Undo</span>
+          </button>
+          <button
+            className="tb-btn"
+            onClick={() => dispatch({ t: "redo" })}
+            disabled={!state.future.length}
+            title="Redo (⌘⇧Z)"
+            aria-label="Redo (⌘⇧Z)"
+          >
+            <Redo2 size={IC} /> <span className="lbl">Redo</span>
+          </button>
+        </div>
+
+        <div className="tb-divider" aria-hidden="true" />
+
+        {/* Content actions group */}
+        <div className="tb-group" role="group" aria-label="Content actions">
+          <button
+            className="tb-btn"
+            onClick={() => setImportOpen(true)}
+            title="Paste import chat"
+            aria-label="Paste import chat"
+          >
+            <ClipboardPaste size={IC} /> <span className="lbl">Paste import</span>
+          </button>
+          <button
+            className="tb-btn"
+            onClick={resetProject}
+            title="Reset to sample chat"
+            aria-label="Reset project"
+          >
+            <RotateCcw size={IC} /> <span className="lbl">Reset</span>
+          </button>
+        </div>
+
         <div className="tb-spacer" />
-        <span className="save-state">{saveState === "saved" ? "All changes saved" : saveState === "saving" ? "Saving…" : "Unsaved"}</span>
-        <button className="tb-btn primary" onClick={() => setExportOpen(true)}><Download size={IC} /> Export</button>
-      </div>
+
+        {/* Status & Export actions group */}
+        <div className="tb-group status-export-group">
+          <div className="save-state-indicator" aria-live="polite">
+            {saveState === "saving" ? (
+              <>
+                <span className="save-dot saving" aria-hidden="true" />
+                <span className="save-text">Saving…</span>
+              </>
+            ) : saveState === "dirty" ? (
+              <>
+                <span className="save-dot dirty" aria-hidden="true" />
+                <span className="save-text">Unsaved</span>
+              </>
+            ) : (
+              <>
+                <Check size={13} className="save-check" aria-hidden="true" />
+                <span className="save-text">All changes saved</span>
+              </>
+            )}
+          </div>
+          <button
+            className="tb-btn primary"
+            onClick={() => setExportOpen(true)}
+            title="Export video (⌘E)"
+            aria-label="Export video (⌘E)"
+          >
+            <Download size={IC} /> <span>Export</span>
+          </button>
+        </div>
+      </header>
 
       <div className="workspace">
         {/* message list */}
