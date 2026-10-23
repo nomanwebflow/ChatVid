@@ -112,19 +112,46 @@ export default function App() {
   const tl = useMemo(() => buildTimeline(project), [project]);
   const totalFrames = tl.totalFrames;
 
-  // ── load last project from IndexedDB on mount ──
+  // ── load project on mount: check URL ?project=<id> first, then fallback to last saved ──
   useEffect(() => {
-    const last = localStorage.getItem(PROJECT_KEY);
-    if (last) loadProject(last).then((p) => { if (p) { dispatch({ t: "load", p }); setSelId(p.messages[0]?.id ?? null); } });
+    const params = new URLSearchParams(window.location.search);
+    const urlProjectId = params.get("project");
+    const loadFromLocal = () => {
+      const last = localStorage.getItem(PROJECT_KEY);
+      if (last) loadProject(last).then((p) => { if (p) { dispatch({ t: "load", p }); setSelId(p.messages[0]?.id ?? null); } });
+    };
+
+    if (urlProjectId) {
+      fetch(`/api/projects/${urlProjectId}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((p) => {
+          if (p && p.schemaVersion === 1) {
+            dispatch({ t: "load", p });
+            setSelId(p.messages[0]?.id ?? null);
+            saveProject(p);
+            localStorage.setItem(PROJECT_KEY, p.id);
+          } else {
+            loadFromLocal();
+          }
+        })
+        .catch(() => loadFromLocal());
+    } else {
+      loadFromLocal();
+    }
   }, []);
 
-  // ── autosave (debounced) ──
+  // ── autosave (debounced): saves to IndexedDB and syncs to server ──
   useEffect(() => {
     setSaveState("dirty");
     const h = setTimeout(async () => {
       setSaveState("saving");
       await saveProject(project);
       localStorage.setItem(PROJECT_KEY, project.id);
+      fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(project),
+      }).catch(() => {});
       setSaveState("saved");
     }, 600);
     return () => clearTimeout(h);

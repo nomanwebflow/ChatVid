@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "vite",
     "server": "node server/render.mjs",
+    "mcp": "node server/mcp.mjs",
     "dev:all": "concurrently -n web,render -c green,cyan \"vite\" \"node server/render.mjs\"",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@remotion/bundler": "^4.0.537",
     "@remotion/player": "^4.0.537",
     "@remotion/renderer": "^4.0.537",
