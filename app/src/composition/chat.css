@@ -55,14 +55,17 @@
 .bubble{position:relative;border-radius:12px;border:.66px solid var(--shadow-baloon);
   max-width:287px;min-width:88px;box-shadow:0 .66px 0 var(--shadow-baloon);padding:5.5px 10px 6px}
 .bubble-me{background:var(--baloon-me)}
+.bubble-me.has-receipt{min-width:96px}
 .bubble-them{background:var(--baloon-them)}
 .tail-me,.tail-them{position:absolute;bottom:0;width:15px;height:18px;pointer-events:none;overflow:visible}
 .tail-me{right:-7.5px}
 .tail-them{left:-7.5px}
 
 .bubble-text{font-size:16px;line-height:20.16px;letter-spacing:-.208px;color:var(--txt-primary);font-weight:400;word-break:break-word;white-space:pre-wrap}
-.bubble-me .bubble-text::after{content:"";display:inline-block;width:3.6em;height:1px;vertical-align:middle}
-.bubble-them .bubble-text::after{content:"";display:inline-block;width:2.6em;height:1px;vertical-align:middle}
+.bubble-them .bubble-text::after{content:"";display:inline-block;width:68px;height:0;vertical-align:bottom}
+.bubble-me .bubble-text::after{content:"";display:inline-block;width:68px;height:0;vertical-align:bottom}
+.bubble-me.has-receipt .bubble-text::after{width:86px}
+.bubble.no-ts .bubble-text::after{display:none}
 
 .ts{position:absolute;bottom:3px;right:8.11px;display:flex;align-items:center;gap:2px;
   font-size:12.4px;color:var(--txt-secondary);letter-spacing:.62px;white-space:nowrap;line-height:normal}

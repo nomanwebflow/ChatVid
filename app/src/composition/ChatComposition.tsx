@@ -117,10 +117,12 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
             const prev = tl.events[i - 1]?.message;
             const firstOfRun = !prev || prev.participantId !== m.participantId;
             const style = entryStyle(m.animation, progress);
+            const hasReceipt = mine && !!m.readReceipt;
+            const hasTs = !!m.timestamp || hasReceipt;
             if (mine) {
               return (
                 <div className={`msg-row-me${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>
-                  <div className="bubble bubble-me">
+                  <div className={`bubble bubble-me${hasReceipt ? " has-receipt" : ""}${!hasTs ? " no-ts" : ""}`}>
                     {firstOfRun && <div className="tail-me"><TailMe /></div>}
                     <span className="bubble-text">{m.text}</span>
                     <div className="ts">{m.timestamp || ""} {m.readReceipt && <div className="check"><CheckTick /></div>}</div>
@@ -131,7 +133,7 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
             return (
               <div className={`msg-row-them${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>
                 <div className="avatar-wrap">
-                  <div className="bubble bubble-them">
+                  <div className={`bubble bubble-them${!hasTs ? " no-ts" : ""}`}>
                     {firstOfRun && <div className="tail-them"><TailThem /></div>}
                     <span className="bubble-text">{m.text}</span>
                     <div className="ts">{m.timestamp || ""}</div>
