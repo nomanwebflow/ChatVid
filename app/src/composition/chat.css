@@ -35,8 +35,14 @@
 .chat-bkg img{width:100%;height:100%;object-fit:cover;display:block}
 
 /* ── messages ── */
-.messages-scroll{position:absolute;inset:0;overflow:hidden;padding-top:98px;padding-bottom:77px;z-index:5}
-.messages-inner{display:flex;flex-direction:column;gap:12px;padding-bottom:8px;min-height:100%;justify-content:flex-start}
+/* viewport clips exactly between the header (98px) and input bar (77px) so a
+   scrolled message can never leak past either edge */
+.messages-scroll{position:absolute;top:98px;left:0;right:0;bottom:77px;overflow:hidden;z-index:5}
+.messages-inner{display:flex;flex-direction:column;padding-bottom:8px;min-height:100%;justify-content:flex-start}
+/* spacing: larger gap when the sender changes, tight gap within one sender's run */
+.msg-row-me,.msg-row-them{margin-top:10px}
+.msg-row-me.cont,.msg-row-them.cont{margin-top:2px}
+.messages-inner>.date-row+*{margin-top:0}
 
 .date-row{display:flex;align-items:center;justify-content:center;padding:23px 0 1px}
 .date-chip{background:#fff;border:.66px solid var(--shadow-baloon);border-radius:8px;
@@ -87,7 +93,8 @@
 /* ── composer ── */
 .input-bar{position:absolute;bottom:0;right:0;width:393px;z-index:30;display:flex;flex-direction:column;align-items:center}
 .input-inner{display:flex;align-items:center;gap:8px;padding:5.5px 9px;position:relative;width:100%}
-.i-plus{flex-shrink:0;color:#0a0a0a}
+.i-plus{flex-shrink:0;color:#0a0a0a;display:flex;align-items:center;justify-content:center;align-self:center}
+.i-plus svg{display:block}
 .i-field{flex:1;background:#fff;border:.33px solid var(--brd-input);border-radius:15px;
   display:flex;align-items:center;gap:16px;padding:4px 9px 4px 10px;min-height:30px;min-width:0}
 .i-placeholder{flex:1;font-size:16px;line-height:21px;color:var(--txt-primary);letter-spacing:-.32px;opacity:.3}

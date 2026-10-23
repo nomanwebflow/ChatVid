@@ -1,4 +1,5 @@
-import { useCurrentFrame, staticFile } from "remotion";
+import { useCurrentFrame, staticFile, Audio, Sequence } from "remotion";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Project, Message } from "../types";
 import { buildTimeline, messageStateAt, typingVisibleAt, currentEventIndex } from "../timeline";
 import { TailThem, TailMe, CheckTick, StatusIcons, Chevron, CallIcons, ComposerIcons, avatarDataUri } from "./svg";
@@ -58,14 +59,53 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
   // header sub-text: "typing…" while a left-side typing indicator is up
   const sub = typingPart && typingPart.side === "left" ? "typing…" : project.appearance.contactSub;
 
+  // ── auto-scroll: keep the newest message in view as the chat grows ──
+  // Deterministic for render: measure the content and viewport each frame and
+  // pin the content to the bottom. The per-message entry animation grows each
+  // bubble's height over its reveal window, so the overflow — and thus the
+  // scroll — eases up smoothly on its own, with no cross-frame state.
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset] = useState(0);
+  const targetRef = useRef(0);
+  useLayoutEffect(() => {
+    const vp = viewportRef.current, inner = innerRef.current;
+    if (!vp || !inner) return;
+    // viewport is clipped to the exact message area (top/bottom insets in CSS),
+    // so its clientHeight is the visible height.
+    const visible = vp.clientHeight;
+    targetRef.current = Math.max(0, inner.scrollHeight - visible);
+    // ease toward the bottom: ~25% of the remaining gap per frame, with a
+    // minimum step so it always lands. Frames render in order, so this glide is
+    // reproduced identically in the export.
+    setOffset((prev) => {
+      const t = targetRef.current;
+      if (Math.abs(t - prev) < 0.5) return t;
+      const next = prev + (t - prev) * 0.25;
+      return Math.abs(t - next) < 1 ? t : next;
+    });
+  });
+
+  // one short notification sound per message, at the frame it appears.
+  // left (incoming) -> receive tone; right (your sent) -> soft swoosh.
+  const sounds = tl.events.map((ev) => {
+    const mine = byId(ev.message.participantId).side === "right";
+    return { from: Math.max(0, Math.round(ev.revealStart)), src: mine ? "sfx-sent.mp3" : "sfx-receive.mp3", key: ev.message.id };
+  });
+
   const Scene = (
     <>
+      {sounds.map((s) => (
+        <Sequence key={s.key} from={s.from} durationInFrames={30} layout="none">
+          <Audio src={staticFile(s.src)} volume={0.7} />
+        </Sequence>
+      ))}
       <div className="chat-bkg">
         {project.appearance.wallpaperUrl ? <img src={wallpaperSrc(project.appearance.wallpaperUrl)} alt="" /> : null}
       </div>
 
-      <div className="messages-scroll">
-        <div className="messages-inner">
+      <div className="messages-scroll" ref={viewportRef}>
+        <div className="messages-inner" ref={innerRef} style={{ transform: `translateY(${-offset}px)` }}>
           <div className="date-row"><div className="date-chip">Today</div></div>
 
           {rows.map(({ ev, i, visible, progress }) => {
@@ -79,7 +119,7 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
             const style = entryStyle(m.animation, progress);
             if (mine) {
               return (
-                <div className="msg-row-me" key={m.id} style={style}>
+                <div className={`msg-row-me${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>
                   <div className="bubble bubble-me">
                     {firstOfRun && <div className="tail-me"><TailMe /></div>}
                     <span className="bubble-text">{m.text}</span>
@@ -89,7 +129,7 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
               );
             }
             return (
-              <div className="msg-row-them" key={m.id} style={style}>
+              <div className={`msg-row-them${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>
                 <div className="avatar-wrap">
                   <div className="bubble bubble-them">
                     {firstOfRun && <div className="tail-them"><TailThem /></div>}
