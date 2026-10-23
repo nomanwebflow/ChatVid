@@ -213,22 +213,24 @@ export function EditorTimeline({
       <div className="etl-toolbar">
         <div className="etl-left-tools">
           <button
+            type="button"
             className="etl-btn"
             onClick={onRestart}
-            title="Jump to Start"
-            aria-label="Restart timeline"
+            title="Jump to start (Home)"
+            aria-label="Restart timeline to start"
           >
-            <SkipBack size={14} />
+            <SkipBack size={13} />
           </button>
           <button
+            type="button"
             className={`etl-btn ${playing ? "active" : ""}`}
             onClick={onPlayToggle}
-            title={playing ? "Pause" : "Play"}
+            title={playing ? "Pause (Space)" : "Play (Space)"}
             aria-label={playing ? "Pause" : "Play"}
           >
-            {playing ? <Pause size={14} /> : <Play size={14} />}
+            {playing ? <Pause size={13} /> : <Play size={13} />}
           </button>
-          <div className="etl-time-readout">
+          <div className="etl-time-readout" title="Current time / Total duration">
             <span className="etl-cur-time">{fmt(currentSec)}</span>
             <span className="etl-time-div">/</span>
             <span className="etl-tot-time">{fmt(totalDurationSec)}</span>
@@ -238,27 +240,33 @@ export function EditorTimeline({
 
         <div className="etl-center-tools">
           <button
+            type="button"
             className={`etl-toggle-btn ${trackMode === "multi" ? "on" : ""}`}
             onClick={() => setTrackMode(trackMode === "multi" ? "single" : "multi")}
             title="Toggle Multi-Track / Single-Track layout"
+            aria-pressed={trackMode === "multi"}
           >
             <Layers size={13} />
             <span>{trackMode === "multi" ? "Multi-Track" : "Single-Track"}</span>
           </button>
 
           <button
+            type="button"
             className={`etl-toggle-btn ${gridSnap ? "on" : ""}`}
             onClick={() => setGridSnap(!gridSnap)}
             title="Toggle Grid Snapping"
+            aria-pressed={gridSnap}
           >
             <Magnet size={13} />
             <span>Snap</span>
           </button>
 
           <button
+            type="button"
             className="etl-toggle-btn"
             onClick={onAddMessage}
-            title="Add a new message"
+            title="Add message at end"
+            aria-label="Add message"
           >
             <Plus size={13} />
             <span>Add</span>
@@ -268,6 +276,7 @@ export function EditorTimeline({
         <div className="etl-right-tools">
           <div className="etl-zoom-control">
             <button
+              type="button"
               className="etl-btn icon-only"
               onClick={() => setScaleWidth((w) => Math.max(50, w - 20))}
               title="Zoom out"
@@ -286,6 +295,7 @@ export function EditorTimeline({
               aria-label="Timeline zoom slider"
             />
             <button
+              type="button"
               className="etl-btn icon-only"
               onClick={() => setScaleWidth((w) => Math.min(280, w + 20))}
               title="Zoom in"
@@ -294,6 +304,7 @@ export function EditorTimeline({
               <ZoomIn size={13} />
             </button>
             <button
+              type="button"
               className="etl-btn icon-only"
               onClick={handleZoomFit}
               title="Fit timeline to view"

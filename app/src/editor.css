@@ -1261,14 +1261,14 @@ svg.lucide {
 
 /* Timeline Toolbar */
 .etl-toolbar {
-  height: 36px;
-  background: #1a1e1b;
+  height: 38px;
+  background: #171b18;
   border-bottom: 1px solid #28302a;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  gap: 12px;
+  padding: 0 var(--sp-3);
+  gap: var(--sp-3);
   flex-shrink: 0;
 }
 
@@ -1284,78 +1284,80 @@ svg.lucide {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
   border: 1px solid #2e3831;
   background: #202622;
   color: #d1ded4;
   cursor: pointer;
-  transition: background .12s, border-color .12s, color .12s;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
   padding: 0;
 }
 
 .etl-btn:hover {
-  background: #2a332d;
-  color: #fff;
+  background: #2b352e;
   border-color: #3b473f;
+  color: #ffffff;
 }
 
 .etl-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--brand-500);
+  border-color: var(--brand-500);
+  color: #ffffff;
 }
 
 .etl-btn.icon-only {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
 }
 
 .etl-toggle-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 26px;
-  padding: 0 8px;
-  border-radius: 6px;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
   border: 1px solid #2e3831;
   background: #202622;
   color: #9aa89e;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   cursor: pointer;
-  transition: all .12s;
+  transition: all var(--dur-fast) var(--ease);
 }
 
 .etl-toggle-btn:hover {
-  background: #2a332d;
-  color: #fff;
+  background: #2b352e;
+  border-color: #3b473f;
+  color: #ffffff;
 }
 
 .etl-toggle-btn.on {
   background: rgba(31, 122, 77, 0.25);
-  border-color: var(--accent);
+  border-color: var(--brand-500);
   color: #4ade80;
+  font-weight: var(--fw-semibold);
 }
 
 .etl-time-readout {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-left: 6px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
   background: #111412;
-  padding: 3px 8px;
-  border-radius: 6px;
   border: 1px solid #232b25;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
 }
 
 .etl-cur-time {
   color: #4ade80;
-  font-weight: 700;
+  font-weight: var(--fw-semibold);
 }
 
 .etl-time-div {
@@ -1374,13 +1376,13 @@ svg.lucide {
 .etl-zoom-control {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .etl-zoom-slider {
-  width: 72px;
+  width: 80px;
   height: 4px;
-  accent-color: var(--accent);
+  accent-color: var(--brand-500);
   cursor: pointer;
 }
 
@@ -1396,23 +1398,24 @@ svg.lucide {
 .etl-sidebar {
   width: 140px;
   flex-shrink: 0;
-  background: #171b18;
-  border-right: 1px solid #273029;
+  background: #181d19;
+  border-right: 1px solid #28302a;
   display: flex;
   flex-direction: column;
-  z-index: 2;
+  z-index: 5;
 }
 
 .etl-ruler-corner {
   height: 32px;
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: var(--fw-semibold);
   letter-spacing: .08em;
   color: #657569;
   border-bottom: 1px solid #262e28;
+  background: #151916;
 }
 
 .etl-track-headers {
@@ -1425,10 +1428,15 @@ svg.lucide {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 10px;
+  padding: 0 var(--sp-3);
   border-bottom: 1px solid #232b25;
-  background: #171b18;
+  background: #181d19;
   box-sizing: border-box;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.etl-track-header-item:hover {
+  background: #1d231e;
 }
 
 .etl-th-dot {
@@ -1446,7 +1454,7 @@ svg.lucide {
 
 .etl-th-name {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: #e1eae3;
   white-space: nowrap;
   overflow: hidden;
@@ -1455,7 +1463,7 @@ svg.lucide {
 
 .etl-th-sub {
   font-size: 10px;
-  color: #6b7a6f;
+  color: #728275;
   white-space: nowrap;
 }
 
@@ -1474,47 +1482,54 @@ svg.lucide {
 
 .timeline-editor-time-area {
   background: #171b18 !important;
-  border-bottom: 1px solid #273029 !important;
+  border-bottom: 1px solid #28302a !important;
   height: 32px !important;
 }
 
 .timeline-editor-time-unit {
-  border-right-color: rgba(255, 255, 255, 0.08) !important;
+  border-right-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .timeline-editor-time-unit-big {
-  border-right-color: rgba(255, 255, 255, 0.25) !important;
+  border-right-color: rgba(255, 255, 255, 0.35) !important;
 }
 
 .timeline-editor-time-unit-scale {
   color: #8c9c90 !important;
   font-size: 10px !important;
+  font-weight: var(--fw-medium) !important;
   font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums !important;
+  padding-left: 4px !important;
 }
 
 .timeline-editor-cursor {
-  border-left: 2px solid #22c55e !important;
+  width: 0 !important;
+  border-left: 1px solid #22c55e !important;
   border-right: none !important;
-  transform: translateX(-1px) !important;
-  z-index: 50 !important;
+  transform: translateX(-0.5px) !important;
+  z-index: 100 !important;
 }
 
 .timeline-editor-cursor-top {
   border-top-color: #22c55e !important;
+  z-index: 101 !important;
 }
 
 .timeline-editor-cursor-top::before {
   content: "";
   display: block;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   background: #22c55e;
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   margin: 0 auto;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
 }
 
 .timeline-editor-drag-line {
-  border-left: 1px dashed rgba(34, 197, 94, 0.7) !important;
+  border-left: 1px dashed #22c55e !important;
+  z-index: 80 !important;
 }
 
 .timeline-editor-edit-row {
@@ -1525,23 +1540,29 @@ svg.lucide {
 
 .timeline-editor-action {
   background-color: transparent !important;
-  border-radius: 8px !important;
+  border-radius: var(--r-sm) !important;
   overflow: visible !important;
 }
 
 .timeline-editor-action .timeline-editor-action-left-stretch,
 .timeline-editor-action .timeline-editor-action-right-stretch {
-  width: 8px !important;
-  background: rgba(255, 255, 255, 0.15) !important;
-  border-radius: 4px !important;
+  width: 6px !important;
+  background: rgba(255, 255, 255, 0.4) !important;
+  border-radius: 3px !important;
   opacity: 0 !important;
-  transition: opacity .15s !important;
-  z-index: 10 !important;
+  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease) !important;
+  z-index: 20 !important;
 }
 
 .timeline-editor-action:hover .timeline-editor-action-left-stretch,
 .timeline-editor-action:hover .timeline-editor-action-right-stretch {
+  opacity: 0.85 !important;
+}
+
+.timeline-editor-action .timeline-editor-action-left-stretch:hover,
+.timeline-editor-action .timeline-editor-action-right-stretch:hover {
   opacity: 1 !important;
+  background: #ffffff !important;
 }
 
 .timeline-editor-action-left-stretch:after,
@@ -1553,32 +1574,38 @@ svg.lucide {
 .tl-nle-action {
   width: 100%;
   height: 100%;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   display: flex;
   align-items: stretch;
-  border: 1.5px solid transparent;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 2px 6px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   overflow: hidden;
-  transition: transform .1s, box-shadow .1s, border-color .1s;
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease);
+}
+
+.tl-nle-action:hover {
+  filter: brightness(1.08);
 }
 
 .tl-nle-action.is-selected {
-  border-color: #fff !important;
-  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.6), 0 4px 12px rgba(0, 0, 0, 0.5);
+  outline: 2px solid #ffffff !important;
+  outline-offset: 1px !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5) !important;
   transform: translateY(-1px);
+  z-index: 15;
 }
 
 .tl-nle-action.is-current {
-  filter: brightness(1.15);
+  filter: brightness(1.12);
 }
 
 .tl-nle-typing-seg {
   background: repeating-linear-gradient(-45deg,
-      rgba(147, 51, 234, 0.4),
-      rgba(147, 51, 234, 0.4) 6px,
-      rgba(126, 34, 206, 0.6) 6px,
-      rgba(126, 34, 206, 0.6) 12px);
+      rgba(124, 58, 237, 0.45),
+      rgba(124, 58, 237, 0.45) 6px,
+      rgba(109, 40, 217, 0.65) 6px,
+      rgba(109, 40, 217, 0.65) 12px);
   border-right: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
@@ -1587,7 +1614,7 @@ svg.lucide {
   padding: 0 4px;
   color: #f3e8ff;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   flex-shrink: 0;
 }
 
@@ -1596,12 +1623,10 @@ svg.lucide {
 }
 
 @keyframes tlPulse {
-
   0%,
   100% {
     opacity: 0.5;
   }
-
   50% {
     opacity: 1;
   }
@@ -1609,6 +1634,7 @@ svg.lucide {
 
 .tl-nle-typing-label {
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .tl-nle-content {
@@ -1617,7 +1643,7 @@ svg.lucide {
   align-items: center;
   gap: 6px;
   padding: 0 8px;
-  color: #fff;
+  color: #ffffff;
   min-width: 0;
   overflow: hidden;
 }
@@ -1630,14 +1656,14 @@ svg.lucide {
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: var(--fw-semibold);
   flex-shrink: 0;
 }
 
 .tl-nle-text {
   flex: 1;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1653,11 +1679,12 @@ svg.lucide {
 
 .tl-nle-dur {
   font-size: 9px;
-  font-weight: 700;
+  font-weight: var(--fw-semibold);
   padding: 1px 4px;
-  background: rgba(0, 0, 0, 0.25);
-  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: var(--r-sm);
   font-variant-numeric: tabular-nums;
+  color: #ffffff;
   flex-shrink: 0;
 }
 
