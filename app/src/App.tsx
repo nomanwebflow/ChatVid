@@ -6,7 +6,7 @@ import type { Project, Message, EntryAnimation } from "./types";
 import {
   Undo2, Redo2, ClipboardPaste, RotateCcw, Download, Plus, Copy, Trash2, GripVertical, Ellipsis, CheckCheck,
   Play, Pause, SkipBack, Smartphone, Maximize2, Upload, ListOrdered, SlidersHorizontal, MessageSquarePlus,
-  Pencil, Check,
+  Pencil, Check, ChevronDown,
 } from "lucide-react";
 import { FPS, uid } from "./types";
 import { createSampleProject } from "./sampleProject";
@@ -498,11 +498,21 @@ export default function App() {
 
         {/* properties */}
         <div className={`panel right ${mobileTab === "props" ? "active" : ""}`}>
-          <div className="panel-head"><h2>{sel ? "Message" : "Appearance"}</h2></div>
+          <div className="panel-head">
+            <h2>Inspector</h2>
+            {sel && (
+              <span className="count">
+                Message {project.messages.findIndex((x) => x.id === sel.id) + 1}
+              </span>
+            )}
+          </div>
           <div className="panel-body">
-            {sel ? <MessageProps key={sel.id} m={sel} project={project} onChange={updateMessage} /> : null}
-            {!sel && <div className="empty">Select a message to edit its text and timing.</div>}
-            <hr className="sep" />
+            {sel ? (
+              <MessageProps key={sel.id} m={sel} project={project} onChange={updateMessage} />
+            ) : (
+              <div className="empty">Select a message to edit its text, timing, and read receipts.</div>
+            )}
+            <hr className="inspector-divider" />
             <AppearanceProps project={project} onChange={setProject} />
           </div>
         </div>
@@ -547,67 +557,249 @@ export default function App() {
   );
 }
 
+// ── Collapsible section component with remembered state ──
+function CollapsibleSection({
+  title,
+  storageKey,
+  defaultCollapsed = true,
+  children,
+}: {
+  title: string;
+  storageKey: string;
+  defaultCollapsed?: boolean;
+  children: React.ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved !== null ? saved === "true" : defaultCollapsed;
+    } catch {
+      return defaultCollapsed;
+    }
+  });
+
+  const toggle = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(storageKey, String(next));
+      } catch {
+        // ignore localStorage errors
+      }
+      return next;
+    });
+  };
+
+  return (
+    <div className="inspector-section">
+      <button
+        type="button"
+        className="inspector-sec-head inspector-sec-toggle"
+        onClick={toggle}
+        aria-expanded={!collapsed}
+      >
+        <span>{title}</span>
+        <ChevronDown
+          size={14}
+          className={`inspector-sec-chevron ${collapsed ? "collapsed" : ""}`}
+        />
+      </button>
+      {!collapsed && <div className="inspector-sec-content">{children}</div>}
+    </div>
+  );
+}
+
+// ── Number input with inline unit suffix ("s") and step support ──
+function NumberInputWithSuffix({
+  id,
+  value,
+  step = 0.1,
+  min = 0,
+  suffix = "s",
+  onChange,
+  ariaLabel,
+}: {
+  id?: string;
+  value: number;
+  step?: number;
+  min?: number;
+  suffix?: string;
+  onChange: (val: number) => void;
+  ariaLabel?: string;
+}) {
+  return (
+    <div className="input-with-suffix">
+      <input
+        id={id}
+        type="number"
+        step={step}
+        min={min}
+        value={Number.isFinite(value) ? value : 0}
+        aria-label={ariaLabel}
+        onChange={(e) => {
+          const val = parseFloat(e.target.value);
+          onChange(Number.isFinite(val) && val >= min ? val : min);
+        }}
+      />
+      <span className="input-suffix">{suffix}</span>
+    </div>
+  );
+}
+
 // ── message properties panel ──
-function MessageProps({ m, project, onChange }: { m: Message; project: Project; onChange: (id: string, p: Partial<Message>, squash?: boolean) => void }) {
-  const num = (v: number) => (Number.isFinite(v) && v >= 0 ? v : 0);
+function MessageProps({
+  m,
+  project,
+  onChange,
+}: {
+  m: Message;
+  project: Project;
+  onChange: (id: string, p: Partial<Message>, squash?: boolean) => void;
+}) {
   return (
     <>
-      <div className="field">
-        <label htmlFor="mtext">Message text</label>
-        <textarea id="mtext" value={m.text} onChange={(e) => onChange(m.id, { text: e.target.value }, true)} />
+      {/* 1. MESSAGE SECTION */}
+      <div className="inspector-section">
+        <div className="inspector-sec-head">
+          <span>Message</span>
+        </div>
+        <div className="inspector-sec-content">
+          <div className="field">
+            <label htmlFor="mtext">Message text</label>
+            <textarea
+              id="mtext"
+              value={m.text}
+              placeholder="Type a message..."
+              onChange={(e) => onChange(m.id, { text: e.target.value }, true)}
+            />
+          </div>
+          <div className="row2">
+            <div className="field">
+              <label htmlFor="msender">Sender</label>
+              <select
+                id="msender"
+                value={m.participantId}
+                onChange={(e) => onChange(m.id, { participantId: e.target.value })}
+              >
+                {project.participants.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.side === "right" ? "You" : "Them"})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="manim">Entry animation</label>
+              <select
+                id="manim"
+                value={m.animation}
+                onChange={(e) => onChange(m.id, { animation: e.target.value as EntryAnimation })}
+              >
+                <option value="instant">Instant</option>
+                <option value="fade">Fade</option>
+                <option value="slide">Slide</option>
+                <option value="pop">Pop</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="row2">
-        <div className="field">
-          <label htmlFor="msender">Sender</label>
-          <select id="msender" value={m.participantId} onChange={(e) => onChange(m.id, { participantId: e.target.value })}>
-            {project.participants.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.side})</option>)}
-          </select>
+
+      <hr className="inspector-divider" />
+
+      {/* 2. TIMING SECTION (collapsible, collapsed by default) */}
+      <CollapsibleSection title="Timing" storageKey="chatvid_timing_collapsed" defaultCollapsed={true}>
+        <div className="row2">
+          <div className="field">
+            <label htmlFor="mdelay">Pause before reply</label>
+            <NumberInputWithSuffix
+              id="mdelay"
+              value={m.delayMs / 1000}
+              step={0.1}
+              min={0}
+              ariaLabel="Pause before reply in seconds"
+              onChange={(v) => onChange(m.id, { delayMs: v * 1000 })}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="mread">Reading pause</label>
+            <NumberInputWithSuffix
+              id="mread"
+              value={m.readingDurationMs / 1000}
+              step={0.1}
+              min={0}
+              ariaLabel="Reading pause in seconds"
+              onChange={(v) => onChange(m.id, { readingDurationMs: v * 1000 })}
+            />
+          </div>
         </div>
-        <div className="field">
-          <label htmlFor="manim">Entry animation</label>
-          <select id="manim" value={m.animation} onChange={(e) => onChange(m.id, { animation: e.target.value as EntryAnimation })}>
-            <option value="instant">Instant</option><option value="fade">Fade</option><option value="slide">Slide</option><option value="pop">Pop</option>
-          </select>
+        <div className="row2">
+          <div className="field">
+            <label htmlFor="manimd">Animation duration</label>
+            <NumberInputWithSuffix
+              id="manimd"
+              value={m.animationDurationMs / 1000}
+              step={0.05}
+              min={0}
+              ariaLabel="Animation duration in seconds"
+              onChange={(v) => onChange(m.id, { animationDurationMs: v * 1000 })}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="mtype">Typing time</label>
+            <NumberInputWithSuffix
+              id="mtype"
+              value={m.typingDurationMs / 1000}
+              step={0.1}
+              min={0}
+              ariaLabel="Typing time in seconds"
+              onChange={(v) => onChange(m.id, { typingDurationMs: v * 1000 })}
+            />
+          </div>
         </div>
-      </div>
-      <div className="row2">
-        <div className="field">
-          <label htmlFor="mdelay">Delay before (s)</label>
-          <input id="mdelay" type="number" min={0} step={0.1} value={m.delayMs / 1000}
-            onChange={(e) => onChange(m.id, { delayMs: num(Number(e.target.value)) * 1000 })} />
+      </CollapsibleSection>
+
+      <hr className="inspector-divider" />
+
+      {/* 3. APPEARANCE SECTION */}
+      <div className="inspector-section">
+        <div className="inspector-sec-head">
+          <span>Appearance</span>
         </div>
-        <div className="field">
-          <label htmlFor="mread">Reading pause (s)</label>
-          <input id="mread" type="number" min={0} step={0.1} value={m.readingDurationMs / 1000}
-            onChange={(e) => onChange(m.id, { readingDurationMs: num(Number(e.target.value)) * 1000 })} />
+        <div className="inspector-sec-content">
+          <div className="field">
+            <label htmlFor="mts">Timestamp</label>
+            <input
+              id="mts"
+              type="text"
+              placeholder="10:14"
+              value={m.timestamp || ""}
+              onChange={(e) => onChange(m.id, { timestamp: e.target.value }, true)}
+            />
+          </div>
+          <div className="toggle-row">
+            <div className="toggle-label-wrap">
+              <span className="toggle-label">Read receipt</span>
+              <span className="toggle-hint">Blue double ticks when read</span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              className={`switch ${m.readReceipt ? "on" : ""}`}
+              aria-checked={m.readReceipt}
+              aria-label="Read receipt toggle"
+              onClick={() => onChange(m.id, { readReceipt: !m.readReceipt })}
+            >
+              <span className="switch-thumb" />
+            </button>
+          </div>
         </div>
-      </div>
-      <div className="row2">
-        <div className="field">
-          <label htmlFor="manimd">Anim duration (s)</label>
-          <input id="manimd" type="number" min={0} step={0.05} value={m.animationDurationMs / 1000}
-            onChange={(e) => onChange(m.id, { animationDurationMs: num(Number(e.target.value)) * 1000 })} />
-        </div>
-        <div className="field">
-          <label htmlFor="mtype">Typing time (s)</label>
-          <input id="mtype" type="number" min={0} step={0.1} value={m.typingDurationMs / 1000}
-            onChange={(e) => onChange(m.id, { typingDurationMs: num(Number(e.target.value)) * 1000 })} />
-        </div>
-      </div>
-      <div className="field">
-        <label htmlFor="mts">Timestamp</label>
-        <input id="mts" type="text" placeholder="10:14" value={m.timestamp || ""} onChange={(e) => onChange(m.id, { timestamp: e.target.value }, true)} />
-      </div>
-      <div className="toggle-row">
-        <span>Read receipt (sent/read ticks)</span>
-        <button className={`switch ${m.readReceipt ? "on" : ""}`} aria-pressed={m.readReceipt} aria-label="Read receipt"
-          onClick={() => onChange(m.id, { readReceipt: !m.readReceipt })} />
       </div>
     </>
   );
 }
 
-// ── appearance panel ──
+// ── appearance / global panel ──
 function AppearanceProps({ project, onChange }: { project: Project; onChange: (p: Project) => void }) {
   const a = project.appearance;
   const set = (patch: Partial<typeof a>) => onChange({ ...project, appearance: { ...a, ...patch } });
@@ -628,60 +820,132 @@ function AppearanceProps({ project, onChange }: { project: Project; onChange: (p
 
   return (
     <>
-      <div className="field">
-        <label>Profile photo</label>
-        <div className="avatar-edit">
-          <img className="avatar-preview" alt="Contact avatar"
-            src={them.avatarUrl || avatarDataUri(them.color)} />
-          <div className="avatar-actions">
-            <label className="tb-btn file-btn">
-              <Upload size={IC} /> Upload…
-              <input type="file" accept="image/*" onChange={onPhoto} hidden />
-            </label>
-            {them.avatarUrl && (
-              <button className="tb-btn" onClick={() => setThemAvatar(undefined)}>Remove</button>
-            )}
+      {/* 4. CONTACT SECTION (collapsible, collapsed by default) */}
+      <CollapsibleSection title="Contact" storageKey="chatvid_contact_collapsed" defaultCollapsed={true}>
+        <div className="field">
+          <label>Profile photo</label>
+          <div className="avatar-edit">
+            <img
+              className="avatar-preview"
+              alt="Contact avatar"
+              src={them.avatarUrl || avatarDataUri(them.color)}
+            />
+            <div className="avatar-actions">
+              <label className="tb-btn file-btn" title="Upload custom photo">
+                <Upload size={IC} /> Upload…
+                <input type="file" accept="image/*" onChange={onPhoto} hidden />
+              </label>
+              {them.avatarUrl && (
+                <button type="button" className="tb-btn" onClick={() => setThemAvatar(undefined)}>
+                  Remove
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-      <div className="field">
-        <label htmlFor="cname">Contact name</label>
-        <input id="cname" type="text" value={a.contactName} onChange={(e) => set({ contactName: e.target.value })} />
-      </div>
-      <div className="row2">
+        <div className="field">
+          <label htmlFor="cname">Contact name</label>
+          <input
+            id="cname"
+            type="text"
+            placeholder="Contact name"
+            value={a.contactName}
+            onChange={(e) => set({ contactName: e.target.value })}
+          />
+        </div>
         <div className="field">
           <label htmlFor="csub">Status text</label>
-          <input id="csub" type="text" value={a.contactSub} onChange={(e) => set({ contactSub: e.target.value })} />
+          <input
+            id="csub"
+            type="text"
+            placeholder="e.g. online, typing..."
+            value={a.contactSub}
+            onChange={(e) => set({ contactSub: e.target.value })}
+          />
         </div>
-        <div className="field">
-          <label htmlFor="chold">End hold (s)</label>
-          <input id="chold" type="number" min={0} step={0.1} value={a.endHoldMs / 1000}
-            onChange={(e) => set({ endHoldMs: Math.max(0, Number(e.target.value)) * 1000 })} />
-        </div>
-      </div>
-      <div className="field">
-        <label htmlFor="cwall">Chat wallpaper</label>
-        <select id="cwall" value={a.wallpaperUrl || ""} onChange={(e) => set({ wallpaperUrl: e.target.value || undefined })}>
-          <option value="wa-bg.webp">WhatsApp doodles</option>
-          <option value="">None (plain)</option>
-        </select>
-      </div>
+      </CollapsibleSection>
 
-      <div className="field">
-        <label>Scene background <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(behind phone)</span></label>
-        <div className="swatches">
-          {SCENE_PRESETS.map((bg) => (
-            <button key={bg} className={`swatch ${a.sceneBackground === bg ? "on" : ""}`}
-              title={bg} style={{ background: bg }} aria-label={`Background ${bg}`}
-              onClick={() => set({ sceneBackground: bg })} />
-          ))}
+      <hr className="inspector-divider" />
+
+      {/* 5. SCENE SECTION */}
+      <div className="inspector-section">
+        <div className="inspector-sec-head">
+          <span>Scene</span>
         </div>
-        <div className="scene-custom">
-          <input type="color" aria-label="Custom background color"
-            value={/^#[0-9a-fA-F]{6}$/.test(a.sceneBackground) ? a.sceneBackground : "#e9ede7"}
-            onChange={(e) => set({ sceneBackground: e.target.value })} />
-          <input type="text" aria-label="Background CSS" value={a.sceneBackground || "#e9ede7"}
-            onChange={(e) => set({ sceneBackground: e.target.value })} />
+        <div className="inspector-sec-content">
+          <div className="field">
+            <label htmlFor="cwall">Chat wallpaper</label>
+            <select
+              id="cwall"
+              value={a.wallpaperUrl || ""}
+              onChange={(e) => set({ wallpaperUrl: e.target.value || undefined })}
+            >
+              <option value="wa-bg.webp">WhatsApp doodles</option>
+              <option value="">None (plain)</option>
+            </select>
+          </div>
+
+          <div className="field">
+            <label htmlFor="chold">End hold</label>
+            <NumberInputWithSuffix
+              id="chold"
+              value={a.endHoldMs / 1000}
+              step={0.1}
+              min={0}
+              ariaLabel="End hold duration in seconds"
+              onChange={(v) => set({ endHoldMs: Math.max(0, v) * 1000 })}
+            />
+          </div>
+
+          <div className="field">
+            <label>Scene background</label>
+            <div className="swatches-grid">
+              {SCENE_PRESETS.map((preset) => {
+                const isSelected = a.sceneBackground === preset.value;
+                const isDark =
+                  preset.value === "#0c0e12" ||
+                  preset.value === "#111827" ||
+                  preset.value.includes("#0f172a");
+                return (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    className={`swatch-btn ${isSelected ? "selected" : ""}`}
+                    style={{ background: preset.value }}
+                    title={preset.name}
+                    aria-label={`Background preset: ${preset.name}`}
+                    onClick={() => set({ sceneBackground: preset.value })}
+                  >
+                    {isSelected && (
+                      <Check
+                        size={13}
+                        strokeWidth={2.8}
+                        className="swatch-check"
+                        style={{ color: isDark ? "#ffffff" : "#1f7a4d" }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="scene-custom">
+              <div className="color-picker-wrap" title="Pick custom color">
+                <input
+                  type="color"
+                  aria-label="Custom background color picker"
+                  value={/^#[0-9a-fA-F]{6}$/.test(a.sceneBackground) ? a.sceneBackground : "#e9ede7"}
+                  onChange={(e) => set({ sceneBackground: e.target.value })}
+                />
+              </div>
+              <input
+                type="text"
+                aria-label="Custom background color hex or CSS"
+                placeholder="#E9EDE7"
+                value={a.sceneBackground || "#e9ede7"}
+                onChange={(e) => set({ sceneBackground: e.target.value })}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </>
@@ -689,9 +953,15 @@ function AppearanceProps({ project, onChange }: { project: Project; onChange: (p
 }
 
 const SCENE_PRESETS = [
-  "#e9ede7", "#ffffff", "#0c0e12", "#111827", "#f3e9dd", "#ead7c3",
-  "linear-gradient(160deg,#dbeafe,#ede9fe)",
-  "linear-gradient(160deg,#fde68a,#fca5a5)",
-  "linear-gradient(160deg,#a7f3d0,#6ee7b7)",
-  "linear-gradient(160deg,#1e293b,#0f172a)",
+  { name: "Sage Light", value: "#e9ede7" },
+  { name: "Pure White", value: "#ffffff" },
+  { name: "Studio Black", value: "#0c0e12" },
+  { name: "Midnight Navy", value: "#111827" },
+  { name: "Warm Cream", value: "#f3e9dd" },
+  { name: "Sand Linen", value: "#ead7c3" },
+  { name: "Pastel Sky", value: "linear-gradient(160deg,#dbeafe,#ede9fe)" },
+  { name: "Sunset Glow", value: "linear-gradient(160deg,#fde68a,#fca5a5)" },
+  { name: "Fresh Mint", value: "linear-gradient(160deg,#a7f3d0,#6ee7b7)" },
+  { name: "Deep Slate", value: "linear-gradient(160deg,#1e293b,#0f172a)" },
 ];
+
