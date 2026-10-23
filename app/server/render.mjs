@@ -17,7 +17,7 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 
 const PORT = Number(process.env.PORT) || 4000;
 const DIST = path.join(ROOT, "dist"); // built editor, served in production
-const MAX_FRAMES = 60 * 30; // 60s cap (spec limit)
+const MAX_FRAMES = 10 * 60 * 30; // 10 min safety ceiling (protects the shared host)
 const RETENTION_MS = 30 * 60 * 1000; // delete outputs after 30 min
 
 const app = express();
@@ -61,7 +61,7 @@ async function runRender(id, project) {
     const serveUrl = await getBundle();
     const composition = await selectComposition({ serveUrl, id: "ChatReel", inputProps: { project } });
     if (composition.durationInFrames > MAX_FRAMES) {
-      throw new Error(`Video is too long (${Math.round(composition.durationInFrames / 30)}s). Max is 60s.`);
+      throw new Error(`Video is too long (${Math.round(composition.durationInFrames / 30)}s). Max is 10 minutes.`);
     }
     job.status = "rendering";
     const file = path.join(OUT_DIR, `${id}.mp4`);
