@@ -83,6 +83,19 @@
 .check img{display:block}
 .bubble-them .ts{padding:2px 3px 2px 0}
 
+/* ── photo message (Figma "Media + Caption") ── */
+.bubble-image{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:250px;max-width:287px;padding:4px 4px 6.5px}
+.bubble-image.no-caption{padding:4px}
+.media{position:relative;flex-shrink:0;width:242px;border-radius:8px;overflow:clip;background:rgba(0,0,0,.06)}
+.media-img{display:block;width:100%;height:100%;object-fit:cover}
+.media-caption{max-width:242px;padding:3px 6px 0}
+/* no caption: the time sits on the photo over a soft dark corner gradient */
+.media-time{position:absolute;right:0;bottom:0;width:176px;height:40px;pointer-events:none;
+  background:radial-gradient(ellipse 150px 54px at 163px 52px,rgba(0,0,0,.53),rgba(0,0,0,0))}
+.media-time-text{position:absolute;right:5px;bottom:3px;display:flex;align-items:center;gap:2px;padding:2px 2px 2px 0;
+  font-size:11px;letter-spacing:.55px;line-height:normal;white-space:nowrap;color:#fff}
+.media-time-text img{display:block}
+
 /* ── voice message (Figma "Vocal") ── */
 .bubble-voice{width:287px;max-width:287px;display:flex;flex-direction:column}
 .bubble-voice.bubble-me{padding:13px 8.11px 3px 7px;gap:4px;--vk:#767779}

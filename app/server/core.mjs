@@ -50,6 +50,11 @@ export function validateProject(project) {
     for (const k of ["delayMs", "readingDurationMs", "animationDurationMs", "typingDurationMs"]) {
       if (!Number.isFinite(m[k]) || m[k] < 0) return `Invalid ${k} on message: must be non-negative number.`;
     }
+    if (m.image != null) {
+      const im = m.image;
+      if (typeof im.src !== "string" || !/^data:image\/(png|jpe?g|webp|gif);/.test(im.src)) return "A photo message needs an image data: URI (png, jpeg, webp or gif).";
+      if (!Number.isFinite(im.width) || !Number.isFinite(im.height) || im.width <= 0 || im.height <= 0) return "A photo message needs a positive width and height.";
+    }
     if (m.voice != null) {
       const v = m.voice;
       if (typeof v.src !== "string") return "A voice message needs a src string (empty for a silent placeholder).";
@@ -61,30 +66,36 @@ export function validateProject(project) {
   return null;
 }
 
-// ── Voice notes ──
-// The editor stores a voice note's audio as a data: URI inside the project. Passing
-// megabytes of base64 through Remotion's input props is slow and fragile, so before a
-// render each one is written to a file inside the bundle's public folder (where
-// staticFile() finds it) and the project given to Remotion points at that file.
-// Stills never play audio, so they just drop it.
+// ── Media attachments (voice notes + photos) ──
+// The editor stores a voice note's audio and a photo as data: URIs inside the project.
+// Passing megabytes of base64 through Remotion's input props is slow and fragile, so before
+// a render each one is written to a file inside the bundle's public folder (where
+// staticFile() finds it) and the project given to Remotion points at that file. A still
+// never plays audio, so it drops the audio (`audio: false`) but keeps the photos.
 const AUDIO_EXT = { "audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/aac": "aac", "audio/wav": "wav", "audio/x-wav": "wav", "audio/wave": "wav", "audio/ogg": "ogg", "audio/webm": "webm", "video/webm": "webm", "application/ogg": "ogg" };
+const IMAGE_EXT = { "image/png": "png", "image/jpeg": "jpg", "image/jpg": "jpg", "image/webp": "webp", "image/gif": "gif" };
 
-async function withVoiceAssets(project, { audio }) {
+async function withMediaAssets(project, { audio }) {
   const clone = structuredClone(project);
   const written = [];
-  let dir = null;
-  for (const m of clone.messages) {
-    const v = m.voice;
-    if (!v || !v.src) continue;
-    const match = /^data:([^;,]+)[^,]*;base64,([\s\S]*)$/.exec(v.src);
-    if (!audio || !match) { v.src = ""; continue; }
-    if (!dir) dir = path.join(await getRemotionBundle(), "public", "voice");
-    fs.mkdirSync(dir, { recursive: true });
-    const rel = `voice/${randomUUID()}.${AUDIO_EXT[match[1].toLowerCase()] || "bin"}`;
-    const file = path.join(dir, path.basename(rel));
+  const dirs = {};
+  // write one data URI to <bundle>/public/<kind>/<uuid>.<ext>; returns the path staticFile() resolves
+  async function materialize(kind, dataUri, extMap) {
+    const match = /^data:([^;,]+)[^,]*;base64,([\s\S]*)$/.exec(dataUri);
+    if (!match) return null;
+    if (!dirs[kind]) {
+      dirs[kind] = path.join(await getRemotionBundle(), "public", kind);
+      fs.mkdirSync(dirs[kind], { recursive: true });
+    }
+    const name = `${randomUUID()}.${extMap[match[1].toLowerCase()] || "bin"}`;
+    const file = path.join(dirs[kind], name);
     fs.writeFileSync(file, Buffer.from(match[2], "base64"));
     written.push(file);
-    v.src = rel;
+    return `${kind}/${name}`;
+  }
+  for (const m of clone.messages) {
+    if (m.voice?.src) m.voice.src = (audio && (await materialize("voice", m.voice.src, AUDIO_EXT))) || "";
+    if (m.image?.src) m.image.src = (await materialize("media", m.image.src, IMAGE_EXT)) || "";
   }
   return {
     project: clone,
@@ -376,8 +387,8 @@ export async function renderProjectMedia(project, options = {}) {
 
   const serveUrl = await getRemotionBundle();
   // voice-note audio goes to files in the bundle for the duration of the render
-  const voices = await withVoiceAssets(project, { audio: true });
-  const renderable = voices.project;
+  const media = await withMediaAssets(project, { audio: true });
+  const renderable = media.project;
   try {
     const composition = await selectComposition({
       serveUrl,
@@ -412,7 +423,7 @@ export async function renderProjectMedia(project, options = {}) {
       fileSizeBytes: fileStats.size,
     };
   } finally {
-    voices.cleanup();
+    media.cleanup();
   }
 }
 
@@ -421,34 +432,39 @@ export async function renderProjectStill(project, options = {}) {
   if (err) throw new Error(err);
 
   const serveUrl = await getRemotionBundle();
-  // a still never plays audio: drop it so the render props stay small
-  const { project: renderable } = await withVoiceAssets(project, { audio: false });
-  const composition = await selectComposition({
-    serveUrl,
-    id: "ChatReel",
-    inputProps: { project: renderable },
-  });
+  // a still never plays audio: drop it so the render props stay small (photos are still shown)
+  const media = await withMediaAssets(project, { audio: false });
+  const renderable = media.project;
+  try {
+    const composition = await selectComposition({
+      serveUrl,
+      id: "ChatReel",
+      inputProps: { project: renderable },
+    });
 
-  const lastFrame = Math.max(0, composition.durationInFrames - 1);
-  let frame = options.frame !== undefined ? Number(options.frame) : lastFrame;
-  if (!Number.isFinite(frame)) frame = lastFrame;
-  frame = Math.min(lastFrame, Math.max(0, Math.round(frame)));
+    const lastFrame = Math.max(0, composition.durationInFrames - 1);
+    let frame = options.frame !== undefined ? Number(options.frame) : lastFrame;
+    if (!Number.isFinite(frame)) frame = lastFrame;
+    frame = Math.min(lastFrame, Math.max(0, Math.round(frame)));
 
-  const outputPath = options.outputPath || path.join(OUTPUTS_DIR, `${project.id || randomUUID().slice(0, 8)}_frame_${frame}.png`);
-  const outDir = path.dirname(outputPath);
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+    const outputPath = options.outputPath || path.join(OUTPUTS_DIR, `${project.id || randomUUID().slice(0, 8)}_frame_${frame}.png`);
+    const outDir = path.dirname(outputPath);
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-  await renderStill({
-    composition,
-    serveUrl,
-    output: outputPath,
-    frame,
-    inputProps: { project: renderable },
-  });
+    await renderStill({
+      composition,
+      serveUrl,
+      output: outputPath,
+      frame,
+      inputProps: { project: renderable },
+    });
 
-  return {
-    outputPath,
-    frame,
-    totalFrames: composition.durationInFrames,
-  };
+    return {
+      outputPath,
+      frame,
+      totalFrames: composition.durationInFrames,
+    };
+  } finally {
+    media.cleanup();
+  }
 }

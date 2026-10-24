@@ -2275,3 +2275,17 @@ a.tb-btn {
 @keyframes rec-pulse { 50% { opacity: 0.3; } }
 .msg-voice { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-secondary); }
 @media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+
+/* ── photo message: inspector panel ── */
+.image-card { align-items: center; }
+.image-thumb {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--gray-0);
+}
+.image-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.image-name { font-size: 13px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

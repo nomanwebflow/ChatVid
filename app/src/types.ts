@@ -20,11 +20,21 @@ export type VoiceNote = {
   name?: string;      // original file name, shown in the editor
 };
 
+// A photo attached to a message: it renders as a WhatsApp image bubble, with the message
+// text as its caption (empty = no caption, the time sits on the photo instead).
+export type ImageAttachment = {
+  src: string;      // data: URI (downscaled in the editor)
+  width: number;    // pixel size, for the bubble's aspect ratio
+  height: number;
+  name?: string;    // original file name, shown in the editor
+};
+
 export type Message = {
   id: string;
   participantId: string;
   text: string;
   voice?: VoiceNote;
+  image?: ImageAttachment;
   order: number;
   delayMs: number;           // pause before this message starts
   readingDurationMs: number; // pause after it appears (after the voice note ends, for voice messages)

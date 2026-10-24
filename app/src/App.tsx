@@ -2,13 +2,15 @@ import { useEffect, useMemo, useReducer, useRef, useState, useCallback } from "r
 import { Player, type PlayerRef } from "@remotion/player";
 import { ChatComposition } from "./composition/ChatComposition";
 import { avatarDataUri } from "./composition/svg";
-import type { Project, Message, EntryAnimation, Participant } from "./types";
+import type { Project, Message, EntryAnimation, Participant, ImageAttachment } from "./types";
 import {
   Undo2, Redo2, ClipboardPaste, RotateCcw, Download, Plus, Copy, Trash2, GripVertical, Ellipsis, CheckCheck,
   Play, Pause, SkipBack, Smartphone, Maximize2, Upload, ListOrdered, SlidersHorizontal, MessageSquarePlus,
-  Pencil, Check, ChevronDown, Loader2, TriangleAlert, X, Mic,
+  Pencil, Check, ChevronDown, Loader2, TriangleAlert, X, Mic, ImagePlus, Image as ImageIcon,
 } from "lucide-react";
 import { VoicePanel } from "./VoicePanel";
+import { ImagePanel } from "./ImagePanel";
+import { IMAGE_ACCEPT, imageFromFile } from "./image";
 import { fmtVoiceTime } from "./voice";
 import { FPS, uid } from "./types";
 import { createSampleProject } from "./sampleProject";
@@ -208,7 +210,7 @@ export default function App() {
 
   // `voice` adds a voice-message placeholder: a 3 s silent bubble until audio is
   // uploaded or recorded in the inspector.
-  function addMessage(opts?: { voice?: boolean }) {
+  function addMessage(opts?: { voice?: boolean; image?: ImageAttachment }) {
     const idx = sel ? ordered.findIndex((m) => m.id === sel.id) : ordered.length - 1;
     const prev = ordered[idx];
     // default to the opposite sender of the previous message
@@ -216,7 +218,8 @@ export default function App() {
     const part = project.participants.find((p) => p.side === otherSide) || project.participants[0];
     const isMe = part.side === "right";
     const nm: Message = {
-      id: uid(), participantId: part.id, text: opts?.voice ? "Voice message" : "New message", order: 0,
+      id: uid(), participantId: part.id, text: opts?.voice ? "Voice message" : opts?.image ? "" : "New message", order: 0,
+      image: opts?.image,
       voice: opts?.voice ? { src: "", durationMs: 3000, peaks: [] } : undefined,
       delayMs: isMe ? 650 : 0, readingDurationMs: isMe ? 450 : 1200,
       animation: "pop", animationDurationMs: 280, typingDurationMs: isMe ? 0 : 1400,
@@ -226,6 +229,15 @@ export default function App() {
     list.splice(idx + 1, 0, nm);
     setProject({ ...project, messages: reindex(list) });
     setSelId(nm.id);
+  }
+  // "Photo" button: pick an image first; the message is only created once it loaded
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  async function onNewPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try { addMessage({ image: await imageFromFile(file) }); }
+    catch (err) { showToast(err instanceof Error ? err.message : "Could not add that image.", "error"); }
   }
   function deleteMessage(id: string) {
     const list = reindex(ordered.filter((m) => m.id !== id));
@@ -293,7 +305,10 @@ export default function App() {
   function selectAndSeek(m: Message) {
     setSelId(m.id);
     const ev = tl.events.find((e) => e.message.id === m.id);
-    if (ev) seek(ev.revealStart);
+    // land on the last frame of its entry animation: the bubble is fully shown (at revealStart it
+    // is still at 0% opacity, so the selected message looked missing), yet still before the next
+    // message can start
+    if (ev) seek(Math.max(ev.revealStart, ev.revealEnd - 1));
   }
   const curIdx = currentEventIndex(tl, frame);
   const curId = tl.events[curIdx]?.message.id;
@@ -475,7 +490,9 @@ export default function App() {
                     <div className="msg-text">
                       {m.voice
                         ? <span className="msg-voice"><Mic size={12} aria-hidden="true" /> Voice message · {fmtVoiceTime(m.voice.durationMs)}</span>
-                        : (m.text || <em>Empty message</em>)}
+                        : m.image
+                          ? <span className="msg-voice"><ImageIcon size={12} aria-hidden="true" /> Photo{m.text.trim() ? ` · ${m.text}` : ""}</span>
+                          : (m.text || <em>Empty message</em>)}
                     </div>
                     <div className="msg-meta">
                       <span className="msg-who">{partName(m.participantId)}</span>
@@ -503,6 +520,8 @@ export default function App() {
           <div className="add-row">
             <button className="tb-btn" onClick={() => addMessage()}><Plus size={IC} /> Add message</button>
             <button className="tb-btn" onClick={() => addMessage({ voice: true })} title="Add a voice message (upload or record audio in the inspector)"><Mic size={IC} /> Voice</button>
+            <button className="tb-btn" onClick={() => photoInputRef.current?.click()} title="Add a photo message (choose an image)"><ImagePlus size={IC} /> Photo</button>
+            <input ref={photoInputRef} type="file" accept={IMAGE_ACCEPT} onChange={onNewPhoto} hidden />
           </div>
         </div>
 
@@ -828,6 +847,7 @@ function MessageProps({
             />
           </div>
           <VoicePanel key={m.id} m={m} onChange={onChange} />
+          <ImagePanel key={`${m.id}-img`} m={m} onChange={onChange} />
           <div className="row2">
             <div className="field">
               <label htmlFor="msender">Sender</label>

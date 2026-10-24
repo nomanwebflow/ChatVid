@@ -4,6 +4,7 @@ import type { Project, Message } from "../types";
 import { buildTimeline, messageStateAt, typingVisibleAt, currentEventIndex, autoStamps } from "../timeline";
 import { TailThem, TailMe, CheckTick, StatusIcons, Chevron, CallIcons, ComposerIcons, avatarDataUri } from "./svg";
 import { VoiceBubble } from "./VoiceBubble";
+import { ImageBubble } from "./ImageBubble";
 import "./chat.css";
 
 type Props = {
@@ -158,20 +159,22 @@ export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoi
             const hasReceipt = mine && !!m.readReceipt;
             const ts = stampOf(m);
             const hasTs = !!ts || hasReceipt;
+            // voice notes and photos are rendered by their own bubbles, in the same row wrapper
+            const inRow = (bubble: React.ReactNode) => mine ? (
+              <div className={`msg-row-me${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>{bubble}</div>
+            ) : (
+              <div className={`msg-row-them${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>
+                <div className="avatar-wrap">{bubble}</div>
+              </div>
+            );
             if (m.voice) {
-              const bubble = (
+              return inRow(
                 <VoiceBubble m={m} ev={ev} frame={frame} mine={mine} ts={ts} lastOfRun={lastOfRun}
                   playerPlaying={playerPlaying} onToggle={onVoiceToggle ? () => onVoiceToggle(m.id) : undefined}
                   avatarSrc={part.avatarUrl || avatarDataUri(part.color)} />
               );
-              return mine ? (
-                <div className={`msg-row-me${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>{bubble}</div>
-              ) : (
-                <div className={`msg-row-them${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>
-                  <div className="avatar-wrap">{bubble}</div>
-                </div>
-              );
             }
+            if (m.image) return inRow(<ImageBubble m={m} mine={mine} ts={ts} lastOfRun={lastOfRun} />);
             if (mine) {
               return (
                 <div className={`msg-row-me${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>

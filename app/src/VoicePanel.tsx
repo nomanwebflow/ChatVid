@@ -52,7 +52,7 @@ export function VoicePanel({ m, onChange }: Props) {
     try {
       const note = await make();
       const text = !m.text || m.text === "New message" ? "Voice message" : m.text;
-      onChange(m.id, { voice: note, text });
+      onChange(m.id, { voice: note, image: undefined, text }); // a message is a voice note OR a photo
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not add that audio.");
     } finally {
