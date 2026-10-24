@@ -1,0 +1,82 @@
+{
+  "total": 15,
+  "passed": 15,
+  "failed": 0,
+  "tests": [
+    {
+      "name": "Initial page load & basic structure",
+      "status": "PASS"
+    },
+    {
+      "name": "Message selection updates Inspector panel",
+      "status": "PASS"
+    },
+    {
+      "name": "Editing message text reflects in list and state",
+      "status": "PASS"
+    },
+    {
+      "name": "Toggle read receipt updates indicator",
+      "status": "PASS"
+    },
+    {
+      "name": "Add text message button appends and selects",
+      "status": "PASS"
+    },
+    {
+      "name": "Add voice message adds microphone bubble",
+      "status": "PASS"
+    },
+    {
+      "name": "Duplicate message copies message right below",
+      "status": "PASS"
+    },
+    {
+      "name": "Delete message removes it from the list",
+      "status": "PASS"
+    },
+    {
+      "name": "Video playback controls toggle state",
+      "status": "PASS"
+    },
+    {
+      "name": "Appearance settings update preview frame and stage",
+      "status": "PASS"
+    },
+    {
+      "name": "Paste Import dialog opens, parses, and cancels with ESC",
+      "status": "PASS"
+    },
+    {
+      "name": "Export dialog opens with tabs and duration info",
+      "status": "PASS"
+    },
+    {
+      "name": "Edge Case: Delete all messages displays friendly empty state",
+      "status": "PASS"
+    },
+    {
+      "name": "Edge Case: Extremely long text and emojis in message",
+      "status": "PASS"
+    },
+    {
+      "name": "Responsiveness across screen widths",
+      "status": "PASS"
+    }
+  ],
+  "errors": [],
+  "consoleLogs": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting..."
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected."
+    },
+    {
+      "type": "info",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold"
+    }
+  ]
+}

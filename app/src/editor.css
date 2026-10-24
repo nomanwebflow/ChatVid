@@ -8,9 +8,10 @@
   /* Brand Green (WhatsApp style) */
   --brand-50: #eaf5ed;
   --brand-100: #cfe8d6;
-  --brand-500: #00d168;
-  --brand-600: #00d168;
-  --brand-700: #7c0800;
+  --brand-500: #1f7a4d;
+  --brand-600: #1a6a43;
+  --brand-700: #145535;
+  --brand-900: #0c3a24;
 
   /* Accent Blue (for "You") */
   --blue-50: #eff6ff;
@@ -622,11 +623,13 @@ svg.lucide {
   box-shadow: var(--sh-floating);
   opacity: 0;
   pointer-events: none;
+  z-index: 10;
   transition: opacity var(--dur-fast) var(--ease);
 }
 
 .msg-item:hover .msg-actions,
-.msg-item:focus-within .msg-actions {
+.msg-item:focus-within .msg-actions,
+.msg-item.sel .msg-actions {
   opacity: 1;
   pointer-events: auto;
 }
