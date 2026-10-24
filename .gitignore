@@ -30,3 +30,5 @@ cf-token
 
 # test artifacts
 .playwright-mcp/
+test-results/
+app/test-results/

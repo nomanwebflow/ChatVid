@@ -189,7 +189,7 @@ export function ExportDialog({
         <div className="dialog-foot">
           {mode === "image" ? (<>
             <button className="tb-btn" onClick={onClose} disabled={shooting}>Close</button>
-            <button className="tb-btn primary" onClick={shoot} disabled={shooting}>
+            <button className="tb-btn primary download-screenshot-btn" onClick={shoot} disabled={shooting}>
               {shooting ? "Rendering…" : "Download PNG"}
             </button>
           </>) : (<>

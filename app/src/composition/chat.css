@@ -66,7 +66,7 @@
 .tail-img{position:absolute;top:0;left:0;width:15px;height:18.6345px;max-width:none;display:block}
 .tail-them .tail-img{transform:scaleX(-1)}
 
-.bubble-text{font-size:15.8px;line-height:21px;letter-spacing:-.2054px;color:var(--txt-primary);font-weight:400;word-break:break-word;white-space:pre-wrap}
+.bubble-text{font-size:15.8px;line-height:21px;letter-spacing:-.2054px;color:var(--txt-primary);font-weight:400;word-break:break-word;overflow-wrap:anywhere;white-space:pre-wrap}
 /* room for the overlaid time: an invisible copy of the timestamp (plus the tick) at the
    end of the text, so the bubble reserves exactly what the time needs. Friend: time
    width + 12 = the design's 43px for "08:21". Mine: + 9, and 19 more for the 17px tick. */
@@ -149,10 +149,10 @@
 .chevron-wrap img,.call-btns img{display:block}
 .contact-block{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
 .contact-photo{width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;border:.212px solid var(--brd-avatar)}
-.contact-txt{display:flex;flex-direction:column;min-width:0}
+.contact-txt{display:flex;flex-direction:column;min-width:0;max-width:150px;overflow:hidden}
 .contact-name{font-size:16px;font-weight:600;color:var(--txt-primary);letter-spacing:-.32px;white-space:nowrap;
   max-width:145px;overflow:hidden;text-overflow:ellipsis;line-height:normal}
-.contact-sub{font-size:12px;color:var(--txt-secondary);letter-spacing:-.12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:normal}
+.contact-sub{font-size:12px;color:var(--txt-secondary);letter-spacing:-.12px;white-space:nowrap;max-width:145px;overflow:hidden;text-overflow:ellipsis;line-height:normal}
 .call-btns{display:flex;align-items:flex-start;gap:16px;padding-bottom:2px;flex-shrink:0}
 
 /* ── composer ── */
@@ -169,9 +169,27 @@
 .home-ind{display:flex;align-items:center;justify-content:center;padding:21px 0 8px;position:relative;width:100%}
 .home-bar{width:140px;height:5px;background:var(--txt-primary);border-radius:100px}
 
-/* ── typing indicator ── */
+/* ── typing & recording indicators ── */
 .typing-bubble{background:var(--baloon-them);border:.66px solid var(--shadow-baloon);border-radius:12px;
   box-shadow:0 .66px 0 var(--shadow-baloon);padding:10px 14px;position:relative;min-width:56px;
   display:inline-flex;align-items:center;justify-content:center}
 .typing-dots{display:inline-flex;gap:4px;align-items:center}
 .typing-dots span{width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.35)}
+
+/* recording audio indicator */
+.recording-audio-bubble{min-width:160px;padding:8px 12px}
+.recording-audio-bubble.bubble-me{background:var(--baloon-me)}
+.recording-audio-indicator{display:inline-flex;align-items:center;gap:6px;user-select:none}
+.rec-live-dot{width:7px;height:7px;border-radius:50%;background:#ea0038;box-shadow:0 0 5px rgba(234,0,56,.55);flex-shrink:0}
+.rec-mic-icon{width:18px;height:18px;flex-shrink:0;display:block}
+.rec-wave-bars{display:inline-flex;align-items:center;gap:2px;height:20px;padding:0 2px;flex-shrink:0}
+.rec-wave-bars span{width:2.5px;border-radius:2px;background:#007bfc;display:block;min-height:4px}
+.recording-audio-indicator.me .rec-wave-bars span{background:#00a884}
+.rec-label{font-size:13px;font-weight:500;color:var(--txt-secondary);letter-spacing:-.15px;white-space:nowrap}
+
+/* contact sub status (recording / typing) */
+.contact-sub.recording{color:#00a884;font-weight:500;display:inline-flex;align-items:center;gap:3px}
+.theme-dark .contact-sub.recording{color:#25d366}
+.contact-sub.typing{color:#00a884;font-weight:500}
+.theme-dark .contact-sub.typing{color:#25d366}
+.sub-rec-mic{width:13px;height:13px;flex-shrink:0;display:inline-block}

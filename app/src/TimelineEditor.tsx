@@ -17,6 +17,8 @@ import {
   Ellipsis,
   CheckCheck,
   Plus,
+  LocateFixed,
+  Mic,
 } from "lucide-react";
 
 interface TimelineEditorProps {
@@ -66,6 +68,8 @@ export function EditorTimeline({
   const [trackMode, setTrackMode] = useState<"multi" | "single">("multi");
   const [gridSnap, setGridSnap] = useState(true);
 
+  const [autoScroll, setAutoScroll] = useState(true);
+
   const totalDurationSec = useMemo(() => totalFrames / FPS, [totalFrames]);
   const currentSec = frame / FPS;
 
@@ -75,6 +79,44 @@ export function EditorTimeline({
       timelineRef.current.setTime(currentSec);
     }
   }, [currentSec]);
+
+  // Auto-scroll the timeline as the video progresses
+  useEffect(() => {
+    if (!timelineRef.current || !autoScroll || isDraggingCursor.current) return;
+
+    const startLeft = 16;
+    const playheadPx = startLeft + currentSec * scaleWidth;
+
+    const target = timelineRef.current.target;
+    const grid = target?.querySelector(".ReactVirtualized__Grid") as HTMLElement | null;
+    const clientWidth = grid?.clientWidth || target?.clientWidth || 0;
+    if (!clientWidth) return;
+
+    const currentScrollLeft = grid ? grid.scrollLeft : 0;
+    const scrollWidth = grid?.scrollWidth || clientWidth;
+    const maxScroll = Math.max(0, scrollWidth - clientWidth);
+
+    if (playing) {
+      // Follow the playhead smoothly once it passes 40% of visible viewport
+      const followThreshold = clientWidth * 0.4;
+      if (playheadPx > currentScrollLeft + followThreshold) {
+        const targetScroll = Math.min(maxScroll, Math.max(0, playheadPx - followThreshold));
+        if (Math.abs(targetScroll - currentScrollLeft) >= 1) {
+          timelineRef.current.setScrollLeft(targetScroll);
+        }
+      } else if (playheadPx < currentScrollLeft) {
+        // Video looped back or jumped back
+        const targetScroll = Math.min(maxScroll, Math.max(0, playheadPx - clientWidth * 0.2));
+        timelineRef.current.setScrollLeft(targetScroll);
+      }
+    } else {
+      // When paused: keep playhead in view if completely off-screen (e.g. seek / select)
+      if (playheadPx > currentScrollLeft + clientWidth || playheadPx < currentScrollLeft) {
+        const targetScroll = Math.min(maxScroll, Math.max(0, playheadPx - clientWidth * 0.25));
+        timelineRef.current.setScrollLeft(targetScroll);
+      }
+    }
+  }, [currentSec, playing, autoScroll, scaleWidth]);
 
   // Map messages and events to timeline rows
   const eventMap = useMemo(() => {
@@ -168,11 +210,15 @@ export function EditorTimeline({
         >
           {hasTyping && (
             <div
-              className="tl-nle-typing-seg"
+              className={`tl-nle-typing-seg ${m.voice ? "voice-rec" : ""}`}
               style={{ width: `${typingPct}%` }}
-              title={`Typing: ${typingSpanSec.toFixed(1)}s`}
+              title={m.voice ? `Recording audio: ${typingSpanSec.toFixed(1)}s` : `Typing: ${typingSpanSec.toFixed(1)}s`}
             >
-              <Ellipsis size={13} className="tl-nle-typing-icon" />
+              {m.voice ? (
+                <Mic size={12} className="tl-nle-typing-icon" />
+              ) : (
+                <Ellipsis size={13} className="tl-nle-typing-icon" />
+              )}
               <span className="tl-nle-typing-label">{typingSpanSec.toFixed(1)}s</span>
             </div>
           )}
@@ -259,6 +305,17 @@ export function EditorTimeline({
           >
             <Magnet size={13} />
             <span>Snap</span>
+          </button>
+
+          <button
+            type="button"
+            className={`etl-toggle-btn ${autoScroll ? "on" : ""}`}
+            onClick={() => setAutoScroll((v) => !v)}
+            title="Toggle playhead auto-scroll"
+            aria-pressed={autoScroll}
+          >
+            <LocateFixed size={13} />
+            <span>Auto-Scroll</span>
           </button>
 
           <button
@@ -363,6 +420,7 @@ export function EditorTimeline({
             rowHeight={48}
             gridSnap={gridSnap}
             dragLine={true}
+            autoScroll={true}
             style={{ width: "100%", height: "100%", background: "transparent" }}
             getActionRender={renderAction}
             getScaleRender={(sec: number) => {

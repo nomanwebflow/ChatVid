@@ -71,6 +71,7 @@ export default function App() {
   const [mobileTab, setMobileTab] = useState<"list" | "preview" | "props">("preview");
   const [isExporting, setIsExporting] = useState(false);
   const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
+  const [dismissDesktopNotice, setDismissDesktopNotice] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string; type?: "info" | "success" | "error" }[]>([]);
 
   const showToast = useCallback((message: string, type: "info" | "success" | "error" = "info") => {
@@ -497,8 +498,11 @@ export default function App() {
                     <div className="msg-meta">
                       <span className="msg-who">{partName(m.participantId)}</span>
                       {m.typingDurationMs > 0 && (
-                        <span className="meta-chip typing" title={`Typing: ${(m.typingDurationMs / 1000).toFixed(1)}s`}>
-                          <Ellipsis size={11} />
+                        <span
+                          className={`meta-chip ${m.voice ? "recording" : "typing"}`}
+                          title={`${m.voice ? "Recording audio" : "Typing"}: ${(m.typingDurationMs / 1000).toFixed(1)}s`}
+                        >
+                          {m.voice ? <Mic size={11} /> : <Ellipsis size={11} />}
                           <span>{(m.typingDurationMs / 1000).toFixed(1)}s</span>
                         </span>
                       )}
@@ -718,14 +722,33 @@ export default function App() {
       </div>
 
       {/* "Best used on desktop" notice when screen width < 900px */}
-      <div className="desktop-notice" aria-live="polite">
-        <div className="desktop-notice-card">
-          <Smartphone size={32} className="desktop-notice-icon" aria-hidden="true" />
-          <h3>Best used on desktop</h3>
-          <p>ChatVid’s video timeline and multi-panel editor requires a screen width of at least 900px.</p>
-          <p className="desktop-notice-hint">Please widen your browser window or switch to a desktop computer.</p>
+      {!dismissDesktopNotice && (
+        <div className="desktop-notice" aria-live="polite">
+          <div className="desktop-notice-card">
+            <button
+              type="button"
+              className="desktop-notice-close"
+              onClick={() => setDismissDesktopNotice(true)}
+              aria-label="Dismiss notice"
+            >
+              <X size={16} />
+            </button>
+            <Smartphone size={32} className="desktop-notice-icon" aria-hidden="true" />
+            <h3>Best used on desktop</h3>
+            <p>ChatVid’s video timeline and multi-panel editor is optimized for screens at least 900px wide.</p>
+            <p className="desktop-notice-hint">You can continue to preview the mobile layout or switch to a desktop computer.</p>
+            <div className="desktop-notice-actions">
+              <button
+                type="button"
+                className="tb-btn primary"
+                onClick={() => setDismissDesktopNotice(true)}
+              >
+                Continue to mobile view
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -838,7 +861,10 @@ function MessageProps({
         </div>
         <div className="inspector-sec-content">
           <div className="field">
-            <label htmlFor="mtext">Message text</label>
+            <div className="field-label-row">
+              <label htmlFor="mtext">Message text</label>
+              <span className="field-count-hint">{m.text.length} chars</span>
+            </div>
             <textarea
               id="mtext"
               value={m.text}
@@ -921,13 +947,13 @@ function MessageProps({
             />
           </div>
           <div className="field">
-            <label htmlFor="mtype">Typing time</label>
+            <label htmlFor="mtype">{m.voice ? "Recording time" : "Typing time"}</label>
             <NumberInputWithSuffix
               id="mtype"
               value={m.typingDurationMs / 1000}
               step={0.1}
               min={0}
-              ariaLabel="Typing time in seconds"
+              ariaLabel={m.voice ? "Recording time in seconds" : "Typing time in seconds"}
               onChange={(v) => onChange(m.id, { typingDurationMs: v * 1000 })}
             />
           </div>

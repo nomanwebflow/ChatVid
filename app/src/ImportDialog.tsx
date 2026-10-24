@@ -107,7 +107,7 @@ export function ImportDialog({ project, onClose, onImport }: Props) {
           {parsed ? (
             <>
               <button className="tb-btn" onClick={() => setParsed(null)}>Back</button>
-              <button className="tb-btn primary" onClick={commit} disabled={!resolved.length}>Import {resolved.length} message(s)</button>
+              <button className="tb-btn primary commit-import-btn" onClick={commit} disabled={!resolved.length}>Import {resolved.length} message(s)</button>
             </>
           ) : (
             <>

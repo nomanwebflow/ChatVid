@@ -44,6 +44,8 @@ function entryStyle(anim: Message["animation"], p: number): React.CSSProperties 
   }
 }
 
+const A = (name: string) => staticFile(`figma/${name}`);
+
 function TypingDots({ frame }: { frame: number }) {
   // frame-driven bounce (3 dots, staggered) — deterministic, no CSS timers.
   const dot = (i: number) => {
@@ -55,6 +57,44 @@ function TypingDots({ frame }: { frame: number }) {
     <span className="typing-dots">
       <span style={dot(0)} /><span style={dot(1)} /><span style={dot(2)} />
     </span>
+  );
+}
+
+function RecordingAudioIndicator({ frame, mine }: { frame: number; mine?: boolean }) {
+  // Deterministic frame-driven audio waveform bars: 5 bars simulating live recording
+  const bar = (i: number) => {
+    const phase1 = ((frame * 2.6 + i * 7.5) % 30) / 30;
+    const phase2 = ((frame * 1.3 - i * 4.2) % 20) / 20;
+    const wave = 0.55 * Math.sin(phase1 * Math.PI * 2) + 0.45 * Math.cos(phase2 * Math.PI * 2);
+    const height = 5 + Math.abs(wave) * 14; // 5px to 19px
+    return {
+      height: `${height.toFixed(1)}px`,
+    } as React.CSSProperties;
+  };
+
+  // Pulsing red recording dot: ~1.0s cycle
+  const dotPhase = (frame % 30) / 30;
+  const dotOpacity = 0.35 + 0.65 * Math.abs(Math.sin(dotPhase * Math.PI));
+
+  return (
+    <div className={`recording-audio-indicator${mine ? " me" : ""}`} aria-label="Recording audio">
+      <span className="rec-live-dot" style={{ opacity: dotOpacity }} />
+      <img
+        className="rec-mic-icon"
+        src={A(mine ? "voice-mic-me.svg" : "voice-mic-friend.svg")}
+        width={18}
+        height={18}
+        alt=""
+      />
+      <div className="rec-wave-bars">
+        <span style={bar(0)} />
+        <span style={bar(1)} />
+        <span style={bar(2)} />
+        <span style={bar(3)} />
+        <span style={bar(4)} />
+      </div>
+      <span className="rec-label">recording audio…</span>
+    </div>
   );
 }
 
@@ -72,9 +112,26 @@ export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoi
   });
   const typingEv = tl.events.find((ev) => typingVisibleAt(ev, frame));
   const typingPart = typingEv ? byId(typingEv.message.participantId) : null;
+  const isTypingActive = !!typingEv;
+  const isVoiceRecording = isTypingActive && !!typingEv.message.voice;
 
-  // header sub-text: "typing…" while a left-side typing indicator is up
-  const sub = typingPart && typingPart.side === "left" ? "typing…" : project.appearance.contactSub;
+  // Header sub-text: "recording audio…" with mic icon or "typing…" when indicator is active
+  let subContent: React.ReactNode = project.appearance.contactSub;
+  let subClass = "contact-sub";
+  if (typingPart && typingPart.side === "left") {
+    if (isVoiceRecording) {
+      subClass = "contact-sub recording";
+      subContent = (
+        <>
+          <img src={A("voice-mic-friend.svg")} className="sub-rec-mic" alt="" />
+          <span>recording audio…</span>
+        </>
+      );
+    } else {
+      subClass = "contact-sub typing";
+      subContent = <span>typing…</span>;
+    }
+  }
 
   // every bubble shows a time: the one typed in the editor, else one chained from the
   // message before it (starting at the first message's time)
@@ -202,10 +259,26 @@ export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoi
           {typingEv && typingPart?.side === "left" && (
             <div className="msg-row-them">
               <div className="avatar-wrap">
-                <div className="typing-bubble">
-                  <div className="tail-them"><TailThem /></div>
-                  <TypingDots frame={frame} />
-                </div>
+                {typingEv.message.voice ? (
+                  <div className="typing-bubble recording-audio-bubble">
+                    <div className="tail-them"><TailThem /></div>
+                    <RecordingAudioIndicator frame={frame} />
+                  </div>
+                ) : (
+                  <div className="typing-bubble">
+                    <div className="tail-them"><TailThem /></div>
+                    <TypingDots frame={frame} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {typingEv && typingPart?.side === "right" && typingEv.message.voice && (
+            <div className="msg-row-me">
+              <div className="typing-bubble recording-audio-bubble bubble-me">
+                <div className="tail-me"><TailMe /></div>
+                <RecordingAudioIndicator frame={frame} mine={true} />
               </div>
             </div>
           )}
@@ -225,7 +298,7 @@ export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoi
               <img className="contact-photo" alt="" src={them.avatarUrl || avatarDataUri(them.color)} />
               <div className="contact-txt">
                 <span className="contact-name">{project.appearance.contactName}</span>
-                <span className="contact-sub">{sub}</span>
+                <span className={subClass}>{subContent}</span>
               </div>
             </div>
           </div>
