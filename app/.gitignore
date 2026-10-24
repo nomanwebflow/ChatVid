@@ -27,3 +27,6 @@ data/projects/*.json
 *.njsproj
 *.sln
 *.sw?
+
+# Figma design assets used by the chat UI (the wallpaper is a PNG)
+!public/figma/*.png
