@@ -54,29 +54,15 @@ export function ImportDialog({ project, onClose, onImport }: Props) {
     });
   }, [parsed, lineSender, speakerMap, leftId]);
 
-  // format minutes-since-midnight as a 12-hour clock, e.g. 125 -> "2:05 AM"
-  function fmtClock(mins: number): string {
-    const m = ((mins % 1440) + 1440) % 1440;
-    const h24 = Math.floor(m / 60), min = m % 60;
-    const ap = h24 < 12 ? "AM" : "PM";
-    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-    return `${h12}:${String(min).padStart(2, "0")} ${ap}`;
-  }
-
   function commit() {
-    // auto-timestamps when a message has none: start randomly in the 12am–3am
-    // window, then step forward 0–3 min per message so the night progresses.
-    let clock = Math.floor(Math.random() * 180); // 0..179 min after midnight
+    // Only times that were in the pasted text are stored. Messages without one are left
+    // blank on purpose: they follow the first message's time automatically (see autoStamps),
+    // so changing the first time later moves the whole chat with it.
     const msgs: Message[] = resolved.map((l, idx) => {
       const isMe = project.participants.find((p) => p.id === l.sender)?.side === "right";
-      let stamp = l.time;
-      if (!stamp) {
-        if (idx > 0) clock += Math.floor(Math.random() * 4); // +0..3 min
-        stamp = fmtClock(clock);
-      }
       return {
         id: uid(), participantId: l.sender, text: l.text, order: idx,
-        timestamp: stamp,
+        timestamp: l.time || undefined,
         delayMs: isMe ? 650 : 0, readingDurationMs: isMe ? 450 : 1200,
         animation: "pop", animationDurationMs: 280, typingDurationMs: isMe ? 0 : 1400,
         readReceipt: isMe,
@@ -96,7 +82,7 @@ export function ImportDialog({ project, onClose, onImport }: Props) {
           {!parsed ? (
             <>
               <textarea autoFocus placeholder={SAMPLE} value={raw} onChange={(e) => setRaw(e.target.value)} />
-              <p className="hint">Format: <code>Speaker: message</code>, one per line. A leading timestamp is kept per message — e.g. <code>[9:45 PM] Sara: hi</code> or <code>9:45 PM - Sara: hi</code>. Without one, late-night times (12–3 AM) are generated automatically. Multiline messages and emojis are preserved. Pasted text is treated as plain text — nothing is sent anywhere.</p>
+              <p className="hint">Format: <code>Speaker: message</code>, one per line. A leading timestamp is kept per message — e.g. <code>[9:45 PM] Sara: hi</code> or <code>9:45 PM - Sara: hi</code>. Messages without a time follow the first message's time automatically (a random 12–3 AM start if none has one). Multiline messages and emojis are preserved. Pasted text is treated as plain text — nothing is sent anywhere.</p>
             </>
           ) : (
             <>

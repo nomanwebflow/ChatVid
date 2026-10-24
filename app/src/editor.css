@@ -2220,3 +2220,58 @@ a.tb-btn {
     transition-duration: 0.01ms !important;
   }
 }
+/* ── voice message: inspector panel + list label ── */
+.voice-panel .hint { margin-top: var(--sp-2); }
+.voice-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2);
+  margin-bottom: var(--sp-2);
+  background: var(--line-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+/* mini waveform: same 38-bar shape the video shows */
+.voice-mini {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 1.5px;
+  height: 18px;
+}
+.voice-mini i {
+  display: block;
+  flex: 1 0 0;
+  min-width: 1px;
+  border-radius: 2px;
+  background: var(--ink-muted);
+}
+.voice-dur {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-secondary);
+}
+.voice-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.file-btn.is-disabled { opacity: 0.5; pointer-events: none; }
+.voice-rec {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--danger-500);
+  background: var(--danger-50);
+  border-radius: 10px;
+}
+.rec-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--danger-500);
+  animation: rec-pulse 1s ease-in-out infinite;
+}
+.rec-time { flex: 1; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); }
+@keyframes rec-pulse { 50% { opacity: 0.3; } }
+.msg-voice { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-secondary); }
+@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }

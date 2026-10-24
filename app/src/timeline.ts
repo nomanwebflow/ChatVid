@@ -11,8 +11,13 @@ export type Event = {
   typingEnd: number;   // frame typing disappears
   revealStart: number; // frame the bubble starts its entry animation
   revealEnd: number;   // frame entry animation finishes
+  voiceStart: number;  // frame the voice note starts playing (-1 if not a voice message)
+  voiceEnd: number;    // frame it finishes
   readEnd: number;     // frame the reading pause ends (next event may begin)
 };
+
+// beat between a voice bubble landing and its audio starting to play
+export const VOICE_LEAD_MS = 350;
 
 export type Timeline = {
   events: Event[];
@@ -37,8 +42,15 @@ export function buildTimeline(project: Project): Timeline {
     }
     const revealStart = cursor;
     const revealEnd = revealStart + msToFrames(m.animationDurationMs);
-    const readEnd = revealEnd + msToFrames(m.readingDurationMs);
-    events.push({ message: m, typingStart, typingEnd, revealStart, revealEnd, readEnd });
+    // a voice note plays out in full before the reading pause begins
+    let voiceStart = -1, voiceEnd = -1, readFrom = revealEnd;
+    if (m.voice) {
+      voiceStart = revealEnd + msToFrames(VOICE_LEAD_MS);
+      voiceEnd = voiceStart + Math.max(1, msToFrames(m.voice.durationMs));
+      readFrom = voiceEnd;
+    }
+    const readEnd = readFrom + msToFrames(m.readingDurationMs);
+    events.push({ message: m, typingStart, typingEnd, revealStart, revealEnd, voiceStart, voiceEnd, readEnd });
     cursor = readEnd;
   }
 
@@ -73,3 +85,62 @@ export function currentEventIndex(tl: Timeline, frame: number): number {
 }
 
 export const framesToSeconds = (f: number) => f / FPS;
+
+// ── auto timestamps ──
+// A message with no timestamp gets one at render time, chained from the message before
+// it: previous time + 0-3 min. The chain starts at the FIRST message's time (typed or
+// imported), in the same style ("10:14", "08:21" or "1:47 AM"). Set a time on any later
+// message and the chain carries on from there. With no time anywhere, it starts at a
+// random 12:00-2:59 AM. "Random" is seeded from the project/message ids (FNV-1a), so every
+// frame, the preview and the exported video all show the same times. Clearing a
+// message's timestamp field puts it back on the chain.
+function hash32(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+type ClockStyle = { ampm: boolean; pad: boolean };
+
+// "10:14", "08:21", "9:41 PM", "1:47am" -> minutes since midnight + how it was written
+export function parseClock(s: string): { minutes: number; style: ClockStyle } | null {
+  const m = /^\s*(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*([AaPp])\.?[Mm]\.?)?\s*$/.exec(s);
+  if (!m) return null;
+  let h = Number(m[1]);
+  const min = Number(m[2]);
+  const ap = m[3]?.toLowerCase();
+  if (min > 59 || h > 23) return null;
+  if (ap) {
+    if (h < 1 || h > 12) return null;
+    h = (h % 12) + (ap === "p" ? 12 : 0);
+  }
+  return { minutes: h * 60 + min, style: { ampm: !!ap, pad: m[1].length === 2 } };
+}
+
+function formatClock(mins: number, style: ClockStyle): string {
+  const m = ((mins % 1440) + 1440) % 1440;
+  const h24 = Math.floor(m / 60);
+  const mm = String(m % 60).padStart(2, "0");
+  if (style.ampm) return `${h24 % 12 === 0 ? 12 : h24 % 12}:${mm} ${h24 < 12 ? "AM" : "PM"}`;
+  return `${style.pad ? String(h24).padStart(2, "0") : h24}:${mm}`;
+}
+
+// every message id -> the time its bubble shows
+export function autoStamps(project: Project): Record<string, string> {
+  const ordered = [...project.messages].sort((a, b) => a.order - b.order);
+  const out: Record<string, string> = {};
+  let clock: number | null = null;
+  let style: ClockStyle = { ampm: true, pad: false };
+  for (const m of ordered) {
+    const typed = m.timestamp?.trim();
+    if (typed) {
+      out[m.id] = typed;
+      const parsed = parseClock(typed);
+      if (parsed) { clock = parsed.minutes; style = parsed.style; } // chain continues from here
+      continue;
+    }
+    clock = clock === null ? hash32(project.id) % 180 : clock + (hash32(m.id) % 4);
+    out[m.id] = formatClock(clock, style);
+  }
+  return out;
+}

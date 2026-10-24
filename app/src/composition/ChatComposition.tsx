@@ -1,17 +1,28 @@
 import { useCurrentFrame, staticFile, Audio, Sequence } from "remotion";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Project, Message } from "../types";
-import { buildTimeline, messageStateAt, typingVisibleAt, currentEventIndex } from "../timeline";
+import { buildTimeline, messageStateAt, typingVisibleAt, currentEventIndex, autoStamps } from "../timeline";
 import { TailThem, TailMe, CheckTick, StatusIcons, Chevron, CallIcons, ComposerIcons, avatarDataUri } from "./svg";
+import { VoiceBubble } from "./VoiceBubble";
 import "./chat.css";
 
 type Props = { project: Project };
+
+// A voice note's audio: data/http URIs play as-is (editor preview). The render server
+// swaps data URIs for files in the bundle's public folder, which staticFile() resolves.
+function voiceAudioSrc(src: string): string {
+  if (/^(data:|https?:|blob:)/.test(src)) return src;
+  return staticFile(src.replace(/^\//, ""));
+}
 
 // Resolve a wallpaper src for BOTH the Player and the Remotion render.
 // Bundled assets (bare filename) must go through staticFile() so they resolve
 // against the render bundle's static root; data URIs and absolute URLs pass through.
 function wallpaperSrc(url: string): string {
   if (/^(data:|https?:|blob:)/.test(url)) return url;
+  // saved projects (and the editor's wallpaper option) still say "wa-bg.webp":
+  // that slot now holds the Figma chat wallpaper
+  if (url === "wa-bg.webp") return staticFile("figma/chat-bg.png");
   return staticFile(url.replace(/^\//, ""));
 }
 
@@ -59,10 +70,17 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
   // header sub-text: "typing…" while a left-side typing indicator is up
   const sub = typingPart && typingPart.side === "left" ? "typing…" : project.appearance.contactSub;
 
-  // status-bar clock follows the chat: first message's timestamp, AM/PM stripped
-  // (iOS shows "12:47", not "12:47 AM"). Falls back to 9:41 if no timestamps.
-  const firstTs = project.messages.find((m) => m.timestamp)?.timestamp;
-  const statusTime = firstTs ? firstTs.replace(/\s?[AaPp]\.?[Mm]\.?$/, "").trim() : "9:41";
+  // every bubble shows a time: the one typed in the editor, else one chained from the
+  // message before it (starting at the first message's time)
+  const stamps = autoStamps(project);
+  const stampOf = (m: Message) => stamps[m.id] || "";
+
+  // status-bar clock = the time of the newest message on screen (a phone's clock is never
+  // behind a message it shows); before any message appears, the first message's time.
+  // AM/PM is dropped, as iOS shows "12:47", not "12:47 AM". 9:41 only if there are no messages.
+  const newestShown = [...rows].reverse().find((r) => r.visible)?.ev.message ?? tl.events[0]?.message;
+  const clockText = newestShown ? stampOf(newestShown) : "";
+  const statusTime = clockText ? clockText.replace(/\s?[AaPp]\.?[Mm]\.?$/, "").trim() : "9:41";
 
   // ── auto-scroll: keep the newest message in view as the chat grows ──
   // Deterministic for render: measure the content and viewport each frame and
@@ -105,8 +123,15 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
           <Audio src={staticFile(s.src)} volume={0.7} />
         </Sequence>
       ))}
+      {tl.events.filter((ev) => ev.message.voice?.src).map((ev) => (
+        <Sequence key={`v-${ev.message.id}`} from={ev.voiceStart} durationInFrames={Math.max(1, ev.voiceEnd - ev.voiceStart)} layout="none">
+          <Audio src={voiceAudioSrc(ev.message.voice!.src)} />
+        </Sequence>
+      ))}
       <div className="chat-bkg">
-        {project.appearance.wallpaperUrl ? <img src={wallpaperSrc(project.appearance.wallpaperUrl)} alt="" /> : null}
+        {project.appearance.wallpaperUrl
+          ? <div className="chat-bkg-tile" style={{ backgroundImage: `url("${wallpaperSrc(project.appearance.wallpaperUrl)}")` }} />
+          : null}
       </div>
 
       <div className="messages-scroll" ref={viewportRef}>
@@ -118,19 +143,36 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
             const m = ev.message;
             const part = byId(m.participantId);
             const mine = part.side === "right";
-            // tail shows on the first message of a consecutive same-sender run
             const prev = tl.events[i - 1]?.message;
-            const firstOfRun = !prev || prev.participantId !== m.participantId;
+            const firstOfRun = !prev || prev.participantId !== m.participantId; // spacing
+            // the tail sits on the LAST bubble of a same-sender run (as in the design); it moves
+            // down to the next bubble the moment that one appears
+            const next = rows[i + 1];
+            const lastOfRun = !(next && next.visible && next.ev.message.participantId === m.participantId);
             const style = entryStyle(m.animation, progress);
             const hasReceipt = mine && !!m.readReceipt;
-            const hasTs = !!m.timestamp || hasReceipt;
+            const ts = stampOf(m);
+            const hasTs = !!ts || hasReceipt;
+            if (m.voice) {
+              const bubble = (
+                <VoiceBubble m={m} ev={ev} frame={frame} mine={mine} ts={ts} lastOfRun={lastOfRun}
+                  avatarSrc={part.avatarUrl || avatarDataUri(part.color)} />
+              );
+              return mine ? (
+                <div className={`msg-row-me${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>{bubble}</div>
+              ) : (
+                <div className={`msg-row-them${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>
+                  <div className="avatar-wrap">{bubble}</div>
+                </div>
+              );
+            }
             if (mine) {
               return (
                 <div className={`msg-row-me${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>
                   <div className={`bubble bubble-me${hasReceipt ? " has-receipt" : ""}${!hasTs ? " no-ts" : ""}`}>
-                    {firstOfRun && <div className="tail-me"><TailMe /></div>}
-                    <span className="bubble-text">{m.text}</span>
-                    <div className="ts">{m.timestamp || ""} {m.readReceipt && <div className="check"><CheckTick /></div>}</div>
+                    {lastOfRun && <div className="tail-me"><TailMe /></div>}
+                    <span className="bubble-text">{m.text}</span><span className="ts-gap" aria-hidden="true">{ts}</span>
+                    <div className="ts">{ts} {m.readReceipt && <div className="check"><CheckTick /></div>}</div>
                   </div>
                 </div>
               );
@@ -139,9 +181,9 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
               <div className={`msg-row-them${firstOfRun ? "" : " cont"}`} key={m.id} style={style}>
                 <div className="avatar-wrap">
                   <div className={`bubble bubble-them${!hasTs ? " no-ts" : ""}`}>
-                    {firstOfRun && <div className="tail-them"><TailThem /></div>}
-                    <span className="bubble-text">{m.text}</span>
-                    <div className="ts">{m.timestamp || ""}</div>
+                    {lastOfRun && <div className="tail-them"><TailThem /></div>}
+                    <span className="bubble-text">{m.text}</span><span className="ts-gap" aria-hidden="true">{ts}</span>
+                    <div className="ts">{ts}</div>
                   </div>
                 </div>
               </div>

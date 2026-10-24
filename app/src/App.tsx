@@ -2,15 +2,17 @@ import { useEffect, useMemo, useReducer, useRef, useState, useCallback } from "r
 import { Player, type PlayerRef } from "@remotion/player";
 import { ChatComposition } from "./composition/ChatComposition";
 import { avatarDataUri } from "./composition/svg";
-import type { Project, Message, EntryAnimation } from "./types";
+import type { Project, Message, EntryAnimation, Participant } from "./types";
 import {
   Undo2, Redo2, ClipboardPaste, RotateCcw, Download, Plus, Copy, Trash2, GripVertical, Ellipsis, CheckCheck,
   Play, Pause, SkipBack, Smartphone, Maximize2, Upload, ListOrdered, SlidersHorizontal, MessageSquarePlus,
-  Pencil, Check, ChevronDown, Loader2, TriangleAlert, X,
+  Pencil, Check, ChevronDown, Loader2, TriangleAlert, X, Mic,
 } from "lucide-react";
+import { VoicePanel } from "./VoicePanel";
+import { fmtVoiceTime } from "./voice";
 import { FPS, uid } from "./types";
 import { createSampleProject } from "./sampleProject";
-import { buildTimeline, framesToSeconds, currentEventIndex } from "./timeline";
+import { buildTimeline, framesToSeconds, currentEventIndex, autoStamps } from "./timeline";
 import { saveProject, loadProject } from "./db";
 import { ImportDialog } from "./ImportDialog";
 import { ExportDialog } from "./ExportDialog";
@@ -198,7 +200,9 @@ export default function App() {
   }
   function reindex(list: Message[]): Message[] { return list.map((m, i) => ({ ...m, order: i })); }
 
-  function addMessage() {
+  // `voice` adds a voice-message placeholder: a 3 s silent bubble until audio is
+  // uploaded or recorded in the inspector.
+  function addMessage(opts?: { voice?: boolean }) {
     const idx = sel ? ordered.findIndex((m) => m.id === sel.id) : ordered.length - 1;
     const prev = ordered[idx];
     // default to the opposite sender of the previous message
@@ -206,7 +210,8 @@ export default function App() {
     const part = project.participants.find((p) => p.side === otherSide) || project.participants[0];
     const isMe = part.side === "right";
     const nm: Message = {
-      id: uid(), participantId: part.id, text: "New message", order: 0,
+      id: uid(), participantId: part.id, text: opts?.voice ? "Voice message" : "New message", order: 0,
+      voice: opts?.voice ? { src: "", durationMs: 3000, peaks: [] } : undefined,
       delayMs: isMe ? 650 : 0, readingDurationMs: isMe ? 450 : 1200,
       animation: "pop", animationDurationMs: 280, typingDurationMs: isMe ? 0 : 1400,
       readReceipt: isMe,
@@ -405,7 +410,7 @@ export default function App() {
               <div className="empty-list">
                 <MessageSquarePlus size={26} />
                 <p>No messages yet</p>
-                <button className="tb-btn" onClick={addMessage}>Add the first message</button>
+                <button className="tb-btn" onClick={() => addMessage()}>Add the first message</button>
               </div>
             )}
             {ordered.map((m) => {
@@ -446,7 +451,11 @@ export default function App() {
                   <span className="msg-grip" aria-hidden="true" title="Drag to reorder"><GripVertical size={13} /></span>
                   <span className="msg-av" style={{ background: avColor }} aria-hidden="true">{partName(m.participantId).charAt(0).toUpperCase()}</span>
                   <div className="msg-main">
-                    <div className="msg-text">{m.text || <em>Empty message</em>}</div>
+                    <div className="msg-text">
+                      {m.voice
+                        ? <span className="msg-voice"><Mic size={12} aria-hidden="true" /> Voice message · {fmtVoiceTime(m.voice.durationMs)}</span>
+                        : (m.text || <em>Empty message</em>)}
+                    </div>
                     <div className="msg-meta">
                       <span className="msg-who">{partName(m.participantId)}</span>
                       {m.typingDurationMs > 0 && (
@@ -470,7 +479,10 @@ export default function App() {
               );
             })}
           </div>
-          <div className="add-row"><button className="tb-btn" onClick={addMessage}><Plus size={IC} /> Add message</button></div>
+          <div className="add-row">
+            <button className="tb-btn" onClick={() => addMessage()}><Plus size={IC} /> Add message</button>
+            <button className="tb-btn" onClick={() => addMessage({ voice: true })} title="Add a voice message (upload or record audio in the inspector)"><Mic size={IC} /> Voice</button>
+          </div>
         </div>
 
         {/* preview */}
@@ -611,7 +623,7 @@ export default function App() {
         onPlayToggle={toggle}
         onRestart={restart}
         onUpdateMessage={updateMessage}
-        onAddMessage={addMessage}
+        onAddMessage={() => addMessage()}
       />
 
       {/* mobile tabs */}
@@ -794,6 +806,7 @@ function MessageProps({
               onChange={(e) => onChange(m.id, { text: e.target.value }, true)}
             />
           </div>
+          <VoicePanel key={m.id} m={m} onChange={onChange} />
           <div className="row2">
             <div className="field">
               <label htmlFor="msender">Sender</label>
@@ -893,7 +906,7 @@ function MessageProps({
             <input
               id="mts"
               type="text"
-              placeholder="10:14"
+              placeholder={`${autoStamps(project)[m.id] ?? "10:14"} (auto)`}
               value={m.timestamp || ""}
               onChange={(e) => onChange(m.id, { timestamp: e.target.value }, true)}
             />
@@ -920,50 +933,53 @@ function MessageProps({
   );
 }
 
-// ── appearance / global panel ──
-function AppearanceProps({ project, onChange }: { project: Project; onChange: (p: Project) => void }) {
-  const a = project.appearance;
-  const set = (patch: Partial<typeof a>) => onChange({ ...project, appearance: { ...a, ...patch } });
-  const them = project.participants.find((p) => p.side === "left") || project.participants[0];
-  const setThemAvatar = (url: string | undefined) =>
-    onChange({ ...project, participants: project.participants.map((p) => (p.id === them.id ? { ...p, avatarUrl: url } : p)) });
-
+// Photo picker for one participant: preview, upload (data URL, stays local), remove.
+function PhotoField({ label, who, onSet }: { label: string; who: Participant; onSet: (url: string | undefined) => void }) {
   function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) { alert("Please choose an image file."); return; }
     if (file.size > 10 * 1024 * 1024) { alert("Image must be under 10 MB."); return; }
     const reader = new FileReader();
-    reader.onload = () => setThemAvatar(String(reader.result)); // data URL, stays local
+    reader.onload = () => onSet(String(reader.result));
     reader.readAsDataURL(file);
     e.target.value = ""; // allow re-selecting the same file
   }
+  return (
+    <div className="field">
+      <label>{label}</label>
+      <div className="avatar-edit">
+        <img className="avatar-preview" alt={`${label} preview`} src={who.avatarUrl || avatarDataUri(who.color)} />
+        <div className="avatar-actions">
+          <label className="tb-btn file-btn" title="Upload custom photo">
+            <Upload size={IC} /> Upload…
+            <input type="file" accept="image/*" onChange={onPhoto} hidden />
+          </label>
+          {who.avatarUrl && (
+            <button type="button" className="tb-btn" onClick={() => onSet(undefined)}>Remove</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── appearance / global panel ──
+function AppearanceProps({ project, onChange }: { project: Project; onChange: (p: Project) => void }) {
+  const a = project.appearance;
+  const set = (patch: Partial<typeof a>) => onChange({ ...project, appearance: { ...a, ...patch } });
+  const them = project.participants.find((p) => p.side === "left") || project.participants[0];
+  // "You": the right-hand sender, whose photo shows on your voice messages
+  const me = project.participants.find((p) => p.side === "right" && p.id !== them.id);
+  const setAvatar = (id: string, url: string | undefined) =>
+    onChange({ ...project, participants: project.participants.map((p) => (p.id === id ? { ...p, avatarUrl: url } : p)) });
 
   return (
     <>
       {/* 4. CONTACT SECTION (collapsible, collapsed by default) */}
       <CollapsibleSection title="Contact" storageKey="chatvid_contact_collapsed" defaultCollapsed={true}>
-        <div className="field">
-          <label>Profile photo</label>
-          <div className="avatar-edit">
-            <img
-              className="avatar-preview"
-              alt="Contact avatar"
-              src={them.avatarUrl || avatarDataUri(them.color)}
-            />
-            <div className="avatar-actions">
-              <label className="tb-btn file-btn" title="Upload custom photo">
-                <Upload size={IC} /> Upload…
-                <input type="file" accept="image/*" onChange={onPhoto} hidden />
-              </label>
-              {them.avatarUrl && (
-                <button type="button" className="tb-btn" onClick={() => setThemAvatar(undefined)}>
-                  Remove
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <PhotoField label="Profile photo" who={them} onSet={(url) => setAvatar(them.id, url)} />
+        {me && <PhotoField label="Your photo" who={me} onSet={(url) => setAvatar(me.id, url)} />}
         <div className="field">
           <label htmlFor="cname">Contact name</label>
           <input

@@ -50,8 +50,46 @@ export function validateProject(project) {
     for (const k of ["delayMs", "readingDurationMs", "animationDurationMs", "typingDurationMs"]) {
       if (!Number.isFinite(m[k]) || m[k] < 0) return `Invalid ${k} on message: must be non-negative number.`;
     }
+    if (m.voice != null) {
+      const v = m.voice;
+      if (typeof v.src !== "string") return "A voice message needs a src string (empty for a silent placeholder).";
+      if (!Number.isFinite(v.durationMs) || v.durationMs < 0 || v.durationMs > 5 * 60 * 1000) return "A voice message's durationMs must be between 0 and 5 minutes.";
+      if (!Array.isArray(v.peaks)) return "A voice message needs a peaks array (may be empty).";
+      if (v.src && !/^data:audio\/|^data:video\/webm|^data:application\/ogg/.test(v.src)) return "A voice message's audio must be an audio data: URI.";
+    }
   }
   return null;
+}
+
+// ── Voice notes ──
+// The editor stores a voice note's audio as a data: URI inside the project. Passing
+// megabytes of base64 through Remotion's input props is slow and fragile, so before a
+// render each one is written to a file inside the bundle's public folder (where
+// staticFile() finds it) and the project given to Remotion points at that file.
+// Stills never play audio, so they just drop it.
+const AUDIO_EXT = { "audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/aac": "aac", "audio/wav": "wav", "audio/x-wav": "wav", "audio/wave": "wav", "audio/ogg": "ogg", "audio/webm": "webm", "video/webm": "webm", "application/ogg": "ogg" };
+
+async function withVoiceAssets(project, { audio }) {
+  const clone = structuredClone(project);
+  const written = [];
+  let dir = null;
+  for (const m of clone.messages) {
+    const v = m.voice;
+    if (!v || !v.src) continue;
+    const match = /^data:([^;,]+)[^,]*;base64,([\s\S]*)$/.exec(v.src);
+    if (!audio || !match) { v.src = ""; continue; }
+    if (!dir) dir = path.join(await getRemotionBundle(), "public", "voice");
+    fs.mkdirSync(dir, { recursive: true });
+    const rel = `voice/${randomUUID()}.${AUDIO_EXT[match[1].toLowerCase()] || "bin"}`;
+    const file = path.join(dir, path.basename(rel));
+    fs.writeFileSync(file, Buffer.from(match[2], "base64"));
+    written.push(file);
+    v.src = rel;
+  }
+  return {
+    project: clone,
+    cleanup: () => { for (const f of written) { try { fs.unlinkSync(f); } catch { /* already gone */ } } },
+  };
 }
 
 // ── Timeline Calculation (Headless equivalent of timeline.ts) ──
@@ -66,6 +104,8 @@ export function calculateTimelineStats(project) {
       cursor += msToFrames(m.typingDurationMs);
     }
     cursor += msToFrames(m.animationDurationMs || 280);
+    // a voice note plays out (after a 350 ms beat) before the reading pause, as in src/timeline.ts
+    if (m.voice) cursor += msToFrames(350) + Math.max(1, msToFrames(m.voice.durationMs || 0));
     cursor += msToFrames(m.readingDurationMs || 600);
   }
   const endHold = msToFrames(project.appearance?.endHoldMs ?? 2600);
@@ -335,38 +375,45 @@ export async function renderProjectMedia(project, options = {}) {
   if (err) throw new Error(err);
 
   const serveUrl = await getRemotionBundle();
-  const composition = await selectComposition({
-    serveUrl,
-    id: "ChatReel",
-    inputProps: { project },
-  });
+  // voice-note audio goes to files in the bundle for the duration of the render
+  const voices = await withVoiceAssets(project, { audio: true });
+  const renderable = voices.project;
+  try {
+    const composition = await selectComposition({
+      serveUrl,
+      id: "ChatReel",
+      inputProps: { project: renderable },
+    });
 
-  if (composition.durationInFrames > MAX_FRAMES) {
-    throw new Error(`Video duration (${Math.round(composition.durationInFrames / FPS)}s) exceeds max ceiling of 10 minutes.`);
+    if (composition.durationInFrames > MAX_FRAMES) {
+      throw new Error(`Video duration (${Math.round(composition.durationInFrames / FPS)}s) exceeds max ceiling of 10 minutes.`);
+    }
+
+    const outputPath = options.outputPath || path.join(OUTPUTS_DIR, `${project.id || randomUUID().slice(0, 8)}.mp4`);
+    const outDir = path.dirname(outputPath);
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+
+    await renderMedia({
+      composition,
+      serveUrl,
+      codec: "h264",
+      outputLocation: outputPath,
+      inputProps: { project: renderable },
+      onProgress: options.onProgress || undefined,
+    });
+
+    const fileStats = fs.statSync(outputPath);
+    const timelineStats = calculateTimelineStats(project);
+
+    return {
+      outputPath,
+      totalFrames: composition.durationInFrames,
+      durationSeconds: timelineStats.durationSeconds,
+      fileSizeBytes: fileStats.size,
+    };
+  } finally {
+    voices.cleanup();
   }
-
-  const outputPath = options.outputPath || path.join(OUTPUTS_DIR, `${project.id || randomUUID().slice(0, 8)}.mp4`);
-  const outDir = path.dirname(outputPath);
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-
-  await renderMedia({
-    composition,
-    serveUrl,
-    codec: "h264",
-    outputLocation: outputPath,
-    inputProps: { project },
-    onProgress: options.onProgress || undefined,
-  });
-
-  const fileStats = fs.statSync(outputPath);
-  const timelineStats = calculateTimelineStats(project);
-
-  return {
-    outputPath,
-    totalFrames: composition.durationInFrames,
-    durationSeconds: timelineStats.durationSeconds,
-    fileSizeBytes: fileStats.size,
-  };
 }
 
 export async function renderProjectStill(project, options = {}) {
@@ -374,10 +421,12 @@ export async function renderProjectStill(project, options = {}) {
   if (err) throw new Error(err);
 
   const serveUrl = await getRemotionBundle();
+  // a still never plays audio: drop it so the render props stay small
+  const { project: renderable } = await withVoiceAssets(project, { audio: false });
   const composition = await selectComposition({
     serveUrl,
     id: "ChatReel",
-    inputProps: { project },
+    inputProps: { project: renderable },
   });
 
   const lastFrame = Math.max(0, composition.durationInFrames - 1);
@@ -394,7 +443,7 @@ export async function renderProjectStill(project, options = {}) {
     serveUrl,
     output: outputPath,
     frame,
-    inputProps: { project },
+    inputProps: { project: renderable },
   });
 
   return {

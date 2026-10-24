@@ -11,13 +11,23 @@ export type Participant = {
   avatarUrl?: string;
 };
 
+// An attached voice note: the message renders as a WhatsApp voice bubble and the
+// audio plays in the video right after the bubble appears.
+export type VoiceNote = {
+  src: string;        // data: URI of the audio (uploaded file or in-browser recording); "" = silent placeholder
+  durationMs: number;
+  peaks: number[];    // 0..1 per waveform bar (38 bars, like the design); [] = use the design's pattern
+  name?: string;      // original file name, shown in the editor
+};
+
 export type Message = {
   id: string;
   participantId: string;
   text: string;
+  voice?: VoiceNote;
   order: number;
   delayMs: number;           // pause before this message starts
-  readingDurationMs: number; // pause after it appears
+  readingDurationMs: number; // pause after it appears (after the voice note ends, for voice messages)
   animation: EntryAnimation;
   animationDurationMs: number;
   typingDurationMs: number;  // 0 = no typing indicator

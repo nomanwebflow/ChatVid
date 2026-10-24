@@ -27,7 +27,7 @@ const RETENTION_MS = 30 * 60 * 1000; // delete outputs after 30 min
 const PUBLIC_BASE = process.env.CHATVID_WEB_URL || "https://chatvid.nomanahmed.io";
 
 const app = express();
-app.use(express.json({ limit: "4mb" }));
+app.use(express.json({ limit: "40mb" })); // projects carry voice-note audio as data URIs
 app.use(express.urlencoded({ extended: true })); // OAuth token endpoint is form-encoded
 
 // OAuth 2.1 authorization server + discovery for the MCP connector
