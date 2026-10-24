@@ -6,7 +6,12 @@ import { TailThem, TailMe, CheckTick, StatusIcons, Chevron, CallIcons, ComposerI
 import { VoiceBubble } from "./VoiceBubble";
 import "./chat.css";
 
-type Props = { project: Project };
+type Props = {
+  project: Project;
+  // editor preview only (never set when rendering a video)
+  playerPlaying?: boolean;
+  onVoiceToggle?: (messageId: string) => void;
+};
 
 // A voice note's audio: data/http URIs play as-is (editor preview). The render server
 // swaps data URIs for files in the bundle's public folder, which staticFile() resolves.
@@ -52,7 +57,7 @@ function TypingDots({ frame }: { frame: number }) {
   );
 }
 
-export const ChatComposition: React.FC<Props> = ({ project }) => {
+export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoiceToggle }) => {
   const frame = useCurrentFrame();
   const tl = buildTimeline(project);
   const curIdx = currentEventIndex(tl, frame);
@@ -156,6 +161,7 @@ export const ChatComposition: React.FC<Props> = ({ project }) => {
             if (m.voice) {
               const bubble = (
                 <VoiceBubble m={m} ev={ev} frame={frame} mine={mine} ts={ts} lastOfRun={lastOfRun}
+                  playerPlaying={playerPlaying} onToggle={onVoiceToggle ? () => onVoiceToggle(m.id) : undefined}
                   avatarSrc={part.avatarUrl || avatarDataUri(part.color)} />
               );
               return mine ? (

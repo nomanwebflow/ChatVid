@@ -79,6 +79,8 @@ export default function App() {
     }, 3200);
   }, []);
   const playerRef = useRef<PlayerRef>(null);
+  // set while a single voice note is being played from its bubble: pause when it ends
+  const voiceStopRef = useRef<number | null>(null);
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -175,7 +177,11 @@ export default function App() {
   useEffect(() => {
     const pr = playerRef.current;
     if (!pr) return;
-    const onFrame = (e: { detail: { frame: number } }) => setFrame(e.detail.frame);
+    const onFrame = (e: { detail: { frame: number } }) => {
+      setFrame(e.detail.frame);
+      const stop = voiceStopRef.current;
+      if (stop !== null && e.detail.frame >= stop) { voiceStopRef.current = null; pr.pause(); }
+    };
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     pr.addEventListener("frameupdate", onFrame);
@@ -262,11 +268,26 @@ export default function App() {
   }
 
   // ── preview controls ──
-  const play = () => playerRef.current?.play();
+  const play = () => { voiceStopRef.current = null; playerRef.current?.play(); };
   const pause = () => playerRef.current?.pause();
   const toggle = () => (playing ? pause() : play());
-  const restart = () => { playerRef.current?.seekTo(0); };
-  const seek = (f: number) => playerRef.current?.seekTo(f);
+  const restart = () => { voiceStopRef.current = null; playerRef.current?.seekTo(0); };
+  const seek = (f: number) => { voiceStopRef.current = null; playerRef.current?.seekTo(f); };
+
+  // The play icon on a voice bubble: play just that note (from the start, or resume where
+  // it was paused) and stop when it ends; click again to pause.
+  function toggleVoice(id: string) {
+    const pr = playerRef.current;
+    const ev = tl.events.find((e) => e.message.id === id);
+    if (!pr || !ev || ev.voiceStart < 0) return;
+    setSelId(id);
+    const f = pr.getCurrentFrame();
+    const inNote = f >= ev.voiceStart && f < ev.voiceEnd;
+    if (inNote && pr.isPlaying()) { voiceStopRef.current = null; pr.pause(); return; }
+    voiceStopRef.current = ev.voiceEnd;
+    pr.seekTo(inNote ? f : ev.voiceStart);
+    pr.play();
+  }
 
   // selecting a message seeks to its reveal; current frame highlights a message
   function selectAndSeek(m: Message) {
@@ -510,7 +531,7 @@ export default function App() {
               <Player
                 ref={playerRef}
                 component={ChatComposition as any}
-                inputProps={{ project }}
+                inputProps={{ project, playerPlaying: playing, onVoiceToggle: toggleVoice }}
                 durationInFrames={totalFrames}
                 compositionWidth={1080}
                 compositionHeight={1920}

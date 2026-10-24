@@ -23,16 +23,22 @@ type Props = {
   avatarSrc: string;
   ts: string;
   lastOfRun: boolean;
+  // editor preview only: the Player's play state, and a handler that makes the play
+  // icon clickable. The exported video passes neither, so it stays a plain picture.
+  playerPlaying?: boolean;
+  onToggle?: () => void;
 };
 
-export function VoiceBubble({ m, ev, frame, mine, avatarSrc, ts, lastOfRun }: Props) {
+export function VoiceBubble({ m, ev, frame, mine, avatarSrc, ts, lastOfRun, playerPlaying, onToggle }: Props) {
   const voice = m.voice!;
   const total = ev.voiceEnd - ev.voiceStart;
-  const playing = frame >= ev.voiceStart && frame < ev.voiceEnd;
-  const p = playing && total > 0 ? (frame - ev.voiceStart) / total : 0;
+  const inWindow = frame >= ev.voiceStart && frame < ev.voiceEnd;
+  // while the editor's player is paused mid-note the knob stays put but the icon shows "play"
+  const playing = inWindow && playerPlaying !== false;
+  const p = inWindow && total > 0 ? (frame - ev.voiceStart) / total : 0;
   const peaks = voice.peaks.length === WAVE_BARS ? voice.peaks : DESIGN_PEAKS;
   // idle: whole length; while playing: elapsed, like WhatsApp
-  const label = fmtVoiceTime(playing ? p * voice.durationMs : voice.durationMs);
+  const label = fmtVoiceTime(inWindow ? p * voice.durationMs : voice.durationMs);
 
   const avatar = (
     <div className="vocal-avatar">
@@ -44,11 +50,17 @@ export function VoiceBubble({ m, ev, frame, mine, avatarSrc, ts, lastOfRun }: Pr
   const main = (
     <div className="vocal-main">
       <div className="vocal-play">
-        <img src={A(playing ? "voice-pause.svg" : "voice-play.svg")} width={24} height={24} alt="" />
+        {(() => {
+          const icon = <img src={A(playing ? "voice-pause.svg" : "voice-play.svg")} width={24} height={24} alt="" />;
+          return onToggle ? (
+            <button type="button" className="vocal-playbtn" aria-label={playing ? "Pause voice message" : "Play voice message"}
+              onClick={(e) => { e.stopPropagation(); onToggle(); }}>{icon}</button>
+          ) : icon;
+        })()}
         <div className="vocal-sound">
           <div className="vocal-wave">
             {peaks.map((v, i) => (
-              <i key={i} className={playing && (i + 0.5) / WAVE_BARS <= p ? "on" : ""} style={{ height: 4 + Math.max(0, Math.min(1, v)) * 20 }} />
+              <i key={i} className={inWindow && (i + 0.5) / WAVE_BARS <= p ? "on" : ""} style={{ height: 4 + Math.max(0, Math.min(1, v)) * 20 }} />
             ))}
           </div>
           <div className="vocal-knob" style={{ left: KNOB_START + p * KNOB_TRAVEL }} />
