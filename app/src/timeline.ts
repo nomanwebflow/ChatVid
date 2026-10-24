@@ -128,19 +128,22 @@ function formatClock(mins: number, style: ClockStyle): string {
 // every message id -> the time its bubble shows
 export function autoStamps(project: Project): Record<string, string> {
   const ordered = [...project.messages].sort((a, b) => a.order - b.order);
+  const reveal = new Map(buildTimeline(project).events.map((e) => [e.message.id, e.revealStart]));
   const out: Record<string, string> = {};
-  let clock: number | null = null;
+  // the clock runs at real pace: minutes advance with the video time since the anchor message
+  let anchor: { minutes: number; frame: number } | null = null;
   let style: ClockStyle = { ampm: true, pad: false };
   for (const m of ordered) {
+    const frame = reveal.get(m.id) ?? 0;
     const typed = m.timestamp?.trim();
+    const parsed = typed ? parseClock(typed) : null;
     if (typed) {
       out[m.id] = typed;
-      const parsed = parseClock(typed);
-      if (parsed) { clock = parsed.minutes; style = parsed.style; } // chain continues from here
+      if (parsed) { anchor = { minutes: parsed.minutes, frame }; style = parsed.style; }
       continue;
     }
-    clock = clock === null ? hash32(project.id) % 180 : clock + (hash32(m.id) % 4);
-    out[m.id] = formatClock(clock, style);
+    if (!anchor) anchor = { minutes: hash32(project.id) % 180, frame };
+    out[m.id] = formatClock(anchor.minutes + Math.floor((frame - anchor.frame) / FPS / 60), style);
   }
   return out;
 }
