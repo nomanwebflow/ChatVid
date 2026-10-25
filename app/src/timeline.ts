@@ -24,6 +24,15 @@ export type Timeline = {
   totalFrames: number; // includes the end hold
 };
 
+// How long a message "types" before it lands. Your own plain-text messages type on the on-screen
+// keyboard; a typing time of 0 means auto (about 85 ms per character), anything else is explicit.
+export function typingMsOf(project: Project, m: Message): number {
+  if (m.typingDurationMs > 0) return m.typingDurationMs;
+  const mine = project.participants.find((p) => p.id === m.participantId)?.side === "right";
+  if (!mine || m.voice || m.image || !m.text.trim()) return 0;
+  return Math.min(5000, Math.max(900, Array.from(m.text).length * 85));
+}
+
 // Build the ordered schedule. S_i = E_{i-1} + delay; a message occupies
 // [typing] -> [reveal animation] -> [reading pause].
 export function buildTimeline(project: Project): Timeline {
@@ -35,9 +44,10 @@ export function buildTimeline(project: Project): Timeline {
     cursor += msToFrames(m.delayMs);
     let typingStart = -1;
     let typingEnd = cursor;
-    if (m.typingDurationMs > 0) {
+    const typingMs = typingMsOf(project, m);
+    if (typingMs > 0) {
       typingStart = cursor;
-      typingEnd = cursor + msToFrames(m.typingDurationMs);
+      typingEnd = cursor + msToFrames(typingMs);
       cursor = typingEnd;
     }
     const revealStart = cursor;

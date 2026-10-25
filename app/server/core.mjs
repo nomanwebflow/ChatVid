@@ -117,8 +117,11 @@ export function calculateTimelineStats(project) {
   let cursor = msToFrames(400); // 400ms lead-in pause
   for (const m of ordered) {
     cursor += msToFrames(m.delayMs || 0);
-    if (m.typingDurationMs > 0) {
-      cursor += msToFrames(m.typingDurationMs);
+    const mine = project.participants.find((p) => p.id === m.participantId)?.side === "right";
+    const typingMs = m.typingDurationMs > 0 ? m.typingDurationMs
+      : mine && !m.voice && !m.image && (m.text || "").trim() ? Math.min(5000, Math.max(900, Array.from(m.text).length * 85)) : 0; // keep in sync with src/timeline.ts typingMsOf
+    if (typingMs > 0) {
+      cursor += msToFrames(typingMs);
     }
     cursor += msToFrames(m.animationDurationMs || 280);
     // a voice note plays out (after a 350 ms beat) before the reading pause, as in src/timeline.ts

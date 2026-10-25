@@ -5,6 +5,7 @@ import { buildTimeline, messageStateAt, typingVisibleAt, currentEventIndex, auto
 import { TailThem, TailMe, CheckTick, StatusIcons, Chevron, CallIcons, ComposerIcons, avatarDataUri } from "./svg";
 import { VoiceBubble } from "./VoiceBubble";
 import { ImageBubble } from "./ImageBubble";
+import { IOSKeyboard, KB_HEIGHT } from "./Keyboard";
 import "./chat.css";
 
 type Props = {
@@ -172,6 +173,35 @@ export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoi
     });
   });
 
+  // ── on-screen keyboard: "You" type plain-text messages on it ──
+  // slides up as the typing window opens, text appears character by character, and it slides
+  // down just after the bubble lands (all derived from the frame)
+  const KB_SLIDE = 8;
+  const fullscreen = project.appearance.layout === "fullscreen";
+  const kbScale = fullscreen ? 0.8 : 1;
+  let kbOpen = 0, kbTyped = "", kbPress = 0, kbCaret = false;
+  for (const ev of tl.events) {
+    const m = ev.message;
+    if (ev.typingStart < 0 || m.voice || m.image || byId(m.participantId).side !== "right") continue;
+    const open = Math.min(1, Math.max(0, (frame - ev.typingStart) / KB_SLIDE)) * (1 - Math.min(1, Math.max(0, (frame - ev.typingEnd) / KB_SLIDE)));
+    if (open <= 0) continue;
+    if (open >= kbOpen) {
+      kbOpen = open;
+      if (frame >= ev.typingStart && frame < ev.typingEnd) {
+        const chars = Array.from(m.text);
+        const span = Math.max(1, ev.typingEnd - ev.typingStart - KB_SLIDE - 4); // finish a beat before sending
+        const pos = Math.max(0, Math.min(chars.length, ((frame - ev.typingStart - KB_SLIDE) / span) * chars.length));
+        const n = Math.floor(pos);
+        kbTyped = chars.slice(0, n).join("");
+        const slot = span / Math.max(1, chars.length);
+        kbPress = n > 0 && n <= chars.length && (pos - n) * slot < Math.max(2, slot * 0.7) ? 1 : 0;
+        kbCaret = Math.floor(frame / 15) % 2 === 0 || n > 0;
+      } else { kbTyped = ""; }
+    }
+  }
+  const kbH = Math.round(KB_HEIGHT * kbScale * kbOpen);
+  const barBottom = Math.round(kbH - 34 * (kbOpen > 0 ? 1 : 0) * Math.min(1, kbOpen * 4)); // the home indicator hides under the keyboard
+
   // one short notification sound per message, at the frame it appears.
   // left (incoming) -> receive tone; right (your sent) -> soft swoosh.
   const sounds = tl.events.map((ev) => {
@@ -197,7 +227,7 @@ export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoi
           : null}
       </div>
 
-      <div className="messages-scroll" ref={viewportRef}>
+      <div className="messages-scroll" ref={viewportRef} style={kbOpen > 0 ? { bottom: 77 + barBottom } : undefined}>
         <div className="messages-inner" ref={innerRef} style={{ transform: `translateY(${-Math.round(offset)}px)` }}>
           <div className="date-row"><div className="date-chip">Today</div></div>
 
@@ -306,10 +336,17 @@ export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoi
         </div>
       </div>
 
-      <div className="input-bar">
-        <div className="input-inner"><ComposerIcons /></div>
-        <div className="home-ind"><span className="home-bar" /></div>
+      <div className="input-bar" style={kbOpen > 0 ? { bottom: barBottom } : undefined}>
+        <div className="input-inner"><ComposerIcons typed={kbTyped} caretOn={kbOpen > 0 && kbCaret && frame >= 0} /></div>
+        <div className="home-ind" style={kbOpen > 0 ? { visibility: "hidden" } : undefined}><span className="home-bar" /></div>
       </div>
+      {kbOpen > 0 && (
+        <div style={{ position: "absolute", left: 0, bottom: 0, width: 393, height: kbH, overflow: "visible", zIndex: 40 }}>
+          <div style={{ position: "absolute", left: 0, top: 0, width: 393, height: KB_HEIGHT * kbScale, transform: `translateY(${Math.round(KB_HEIGHT * kbScale - kbH)}px)` }}>
+            <IOSKeyboard typed={kbTyped} pressedAt={kbPress} scale={kbScale} />
+          </div>
+        </div>
+      )}
     </>
   );
 

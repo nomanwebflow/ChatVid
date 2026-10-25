@@ -37,16 +37,22 @@ export const CallIcons = () => (
 );
 
 // composer: plus, input field (empty text + sticker), camera + mic
-export const ComposerIcons = () => (
+export const ComposerIcons = ({ typed = "", caretOn = false }: { typed?: string; caretOn?: boolean }) => (
   <>
     <span className="i-plus"><img src={A("plus.svg")} width={32} height={32} alt="" /></span>
     <div className="i-field">
-      <div className="i-text" />
+      <div className="i-text" style={{ justifyContent: Array.from(typed).length > 27 ? "flex-end" : "flex-start" }}>{typed}{caretOn && <i className="caret" />}</div>
       <img src={A("sticker.svg")} width={24} height={24} alt="" />
     </div>
-    <div className="i-icons">
-      <img src={A("camera.svg")} width={32} height={32} alt="" />
-      <img src={A("mic.svg")} width={32} height={32} alt="" />
-    </div>
+    {typed ? (
+      <span className="send-btn">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 15V3.5M3.8 8.5 9 3.3l5.2 5.2" /></svg>
+      </span>
+    ) : (
+      <div className="i-icons">
+        <img src={A("camera.svg")} width={32} height={32} alt="" />
+        <img src={A("mic.svg")} width={32} height={32} alt="" />
+      </div>
+    )}
   </>
 );

@@ -1114,7 +1114,7 @@ function MessageProps({
             />
           </div>
           <div className="field">
-            <label htmlFor="mtype">{m.voice ? "Recording time" : "Typing time"}</label>
+            <label htmlFor="mtype" title={m.voice || m.image ? undefined : "0 = automatic: your own messages type on the keyboard at about 85 ms per character"}>{m.voice ? "Recording time" : "Typing time"}</label>
             <NumberInputWithSuffix
               id="mtype"
               value={m.typingDurationMs / 1000}
