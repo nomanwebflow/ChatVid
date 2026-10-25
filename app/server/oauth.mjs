@@ -1,12 +1,13 @@
 // Minimal OAuth 2.1 authorization server for the ChatVid MCP connector.
-// ChatVid is single-tenant, so there is no login UI or user DB: the authorize
-// step auto-approves one logical user. The full handshake (discovery, DCR,
+// The authorize step needs a real ChatVid account (Convex login, guests excluded): it
+// hands off to the editor's consent dialog, which calls /oauth/approve with the user's token. The full handshake (discovery, DCR,
 // PKCE, bearer validation) is still implemented because Claude requires it.
 //
 // ponytail: HMAC-signed opaque tokens via node:crypto, no JWT lib and no token
 // store — stateless verify. Secret from env; add per-user identity + a real
 // consent screen only if ChatVid becomes multi-tenant.
 import crypto from "node:crypto";
+import { viewerOf } from "./media.mjs";
 
 const SECRET = process.env.CHATVID_OAUTH_SECRET || "chatvid-dev-secret-change-me";
 const TOKEN_TTL_SEC = 30 * 24 * 3600; // 30 days
@@ -22,8 +23,8 @@ function sign(data) {
 }
 
 // ── signed bearer token ──
-function issueToken() {
-  const payload = { sub: "chatvid-user", iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SEC };
+function issueToken(sub) {
+  const payload = { sub, iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + TOKEN_TTL_SEC };
   const body = b64uJson(payload);
   return `${body}.${sign(body)}`;
 }
@@ -39,10 +40,10 @@ export function verifyToken(token) {
 }
 
 // ── short-lived auth codes (in-memory; fine for a single small instance) ──
-const codes = new Map(); // code -> { challenge, method, redirectUri, exp }
-function newCode(challenge, method, redirectUri) {
+const codes = new Map(); // code -> { challenge, method, redirectUri, sub, exp }
+function newCode(challenge, method, redirectUri, sub) {
   const code = b64u(crypto.randomBytes(24));
-  codes.set(code, { challenge, method, redirectUri, exp: Date.now() + CODE_TTL_MS });
+  codes.set(code, { challenge, method, redirectUri, sub, exp: Date.now() + CODE_TTL_MS });
   return code;
 }
 function takeCode(code) {
@@ -97,16 +98,26 @@ export function mountOAuth(app, base) {
     });
   });
 
-  // Authorization endpoint: single-tenant, so auto-approve and redirect back
-  // with a code. PKCE challenge is remembered and enforced at the token step.
+  // Authorization endpoint: send the browser to the editor, which asks a signed-in user
+  // to allow the connector. The PKCE challenge travels along and is enforced at the token step.
   app.get("/oauth/authorize", (req, res) => {
-    const { redirect_uri, state, code_challenge, code_challenge_method } = req.query;
+    const { redirect_uri } = req.query;
     if (!redirect_uri) return res.status(400).send("missing redirect_uri");
-    const code = newCode(code_challenge, code_challenge_method || "plain", String(redirect_uri));
-    const u = new URL(String(redirect_uri));
-    u.searchParams.set("code", code);
+    try { new URL(String(redirect_uri)); } catch { return res.status(400).send("bad redirect_uri"); }
+    const qs = new URLSearchParams(Object.entries(req.query).filter(([, v]) => typeof v === "string"));
+    res.redirect(`${base}/?connect=1&${qs}`);
+  });
+
+  // Consent step, called by the editor with the user's Convex token. Guests can't connect.
+  app.post("/oauth/approve", async (req, res) => {
+    const user = await viewerOf(req);
+    if (!user || user.isAnonymous) return res.status(401).json({ error: "Sign in with an account to connect Claude." });
+    const { redirect_uri, state, code_challenge, code_challenge_method } = req.body || {};
+    let u;
+    try { u = new URL(String(redirect_uri)); } catch { return res.status(400).json({ error: "bad redirect_uri" }); }
+    u.searchParams.set("code", newCode(code_challenge, code_challenge_method || "plain", u.toString(), String(user._id)));
     if (state) u.searchParams.set("state", String(state));
-    res.redirect(u.toString());
+    res.json({ redirect: u.toString() });
   });
 
   // Token endpoint: verify the code + PKCE, issue a signed bearer token.
@@ -117,7 +128,7 @@ export function mountOAuth(app, base) {
     const entry = takeCode(code);
     if (!entry) return res.status(400).json({ error: "invalid_grant" });
     if (!pkceOk(code_verifier, entry.challenge, entry.method)) return res.status(400).json({ error: "invalid_grant", error_description: "PKCE failed" });
-    res.json({ access_token: issueToken(), token_type: "Bearer", expires_in: TOKEN_TTL_SEC });
+    res.json({ access_token: issueToken(entry.sub), token_type: "Bearer", expires_in: TOKEN_TTL_SEC });
   });
 }
 

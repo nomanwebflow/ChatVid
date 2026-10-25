@@ -20,15 +20,17 @@ const TYPE = Object.fromEntries(Object.entries(EXT).map(([t, e]) => [e, t]));
 const viewer = makeFunctionReference("users:viewer");
 const NAME_RE = /^[a-f0-9]{40}\.[a-z0-9]{2,4}$/;
 
-export async function signedIn(req) {
+// the Convex user behind the request's Bearer token, or null
+export async function viewerOf(req) {
   const token = /^Bearer (.+)$/.exec(req.headers.authorization || "")?.[1];
-  if (!token) return false;
+  if (!token) return null;
   try {
     const c = new ConvexHttpClient(CONVEX_URL);
     c.setAuth(token);
-    return !!(await c.query(viewer, {}));
-  } catch { return false; }
+    return (await c.query(viewer, {})) || null;
+  } catch { return null; }
 }
+export async function signedIn(req) { return !!(await viewerOf(req)); }
 
 // "/api/media/<name>" -> absolute file path, or null
 export function mediaPath(url) {

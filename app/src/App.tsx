@@ -13,6 +13,7 @@ import { useAuthToken } from "@convex-dev/auth/react";
 import { offloadMedia } from "./cloudMedia";
 import { api } from "../convex/_generated/api";
 import { AuthModal } from "./AuthModal";
+import { ConnectDialog } from "./ConnectDialog";
 import { UserMenu } from "./UserMenu";
 import { ProjectsModal } from "./ProjectsModal";
 import { VoicePanel } from "./VoicePanel";
@@ -132,6 +133,11 @@ export default function App() {
   const convex = useConvex();
   const authToken = useAuthToken();
 
+  // OAuth consent for the MCP connector (/?connect=1&redirect_uri=...): needs a real account
+  const [connectParams, setConnectParams] = useState<URLSearchParams | null>(() => {
+    const q = new URLSearchParams(window.location.search);
+    return q.get("connect") === "1" && q.get("redirect_uri") ? q : null;
+  });
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signIn" | "signUp">("signIn");
   const [projectsOpen, setProjectsOpen] = useState(false);
@@ -197,6 +203,10 @@ export default function App() {
   }, [convex]);
 
   // When user logs in, ensure their active project is synced to their cloud account
+  useEffect(() => {
+    if (connectParams && viewer !== undefined && (viewer === null || viewer.isAnonymous)) { setAuthMode("signIn"); setAuthOpen(true); }
+  }, [connectParams, viewer]);
+
   const prevViewerRef = useRef<typeof viewer>(undefined);
   useEffect(() => {
     if (viewer && prevViewerRef.current === null) {
@@ -849,6 +859,10 @@ export default function App() {
           showToast("Signed in successfully!", "success");
         }}
       />
+
+      {connectParams && viewer && !viewer.isAnonymous && (
+        <ConnectDialog params={connectParams} userName={viewer.name} onClose={() => { setConnectParams(null); history.replaceState(null, "", "/"); }} />
+      )}
 
       <ProjectsModal
         isOpen={projectsOpen}
