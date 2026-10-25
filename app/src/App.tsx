@@ -1256,6 +1256,23 @@ function AppearanceProps({ project, onChange }: { project: Project; onChange: (p
             </select>
           </div>
 
+          <div className="toggle-row">
+            <div className="toggle-label-wrap">
+              <span className="toggle-label">Keyboard typing</span>
+              <span className="toggle-hint">Your messages type on the on-screen keyboard</span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              className={`switch ${a.keyboardTyping !== false ? "on" : ""}`}
+              aria-checked={a.keyboardTyping !== false}
+              aria-label="Keyboard typing animation toggle"
+              onClick={() => set({ keyboardTyping: a.keyboardTyping === false })}
+            >
+              <span className="switch-thumb" />
+            </button>
+          </div>
+
           <div className="field">
             <label htmlFor="chold">End hold</label>
             <NumberInputWithSuffix

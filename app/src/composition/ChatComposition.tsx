@@ -182,7 +182,7 @@ export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoi
   let kbOpen = 0, kbTyped = "", kbPress = 0, kbCaret = false;
   for (const ev of tl.events) {
     const m = ev.message;
-    if (ev.typingStart < 0 || m.voice || m.image || byId(m.participantId).side !== "right") continue;
+    if (project.appearance.keyboardTyping === false || ev.typingStart < 0 || m.voice || m.image || byId(m.participantId).side !== "right") continue;
     const open = Math.min(1, Math.max(0, (frame - ev.typingStart) / KB_SLIDE)) * (1 - Math.min(1, Math.max(0, (frame - ev.typingEnd) / KB_SLIDE)));
     if (open <= 0) continue;
     if (open >= kbOpen) {
@@ -209,8 +209,29 @@ export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoi
     return { from: Math.max(0, Math.round(ev.revealStart)), src: mine ? "sfx-sent.mp3" : "sfx-receive.mp3", key: ev.message.id };
   });
 
+  // keyboard clicks: one per typed character, at the frame the character appears
+  const clicks: { from: number; src: string; key: string }[] = [];
+  if (project.appearance.keyboardTyping !== false) {
+    for (const ev of tl.events) {
+      const m = ev.message;
+      if (ev.typingStart < 0 || m.voice || m.image || byId(m.participantId).side !== "right") continue;
+      const chars = Array.from(m.text);
+      const span = Math.max(1, ev.typingEnd - ev.typingStart - KB_SLIDE - 4);
+      chars.forEach((ch, i) => clicks.push({
+        from: Math.round(ev.typingStart + KB_SLIDE + ((i + 1) / chars.length) * span),
+        src: ch === " " ? "sfx-key-space.wav" : "sfx-key.wav",
+        key: `${m.id}-${i}`,
+      }));
+    }
+  }
+
   const Scene = (
     <>
+      {clicks.map((c) => (
+        <Sequence key={c.key} from={c.from} durationInFrames={4} layout="none">
+          <Audio src={staticFile(c.src)} volume={0.55} />
+        </Sequence>
+      ))}
       {sounds.map((s) => (
         <Sequence key={s.key} from={s.from} durationInFrames={30} layout="none">
           <Audio src={staticFile(s.src)} volume={0.7} />

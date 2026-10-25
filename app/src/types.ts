@@ -53,6 +53,7 @@ export type Appearance = {
   contactName: string;
   contactSub: string;        // "online" / "typing…" override while idle
   endHoldMs: number;
+  keyboardTyping?: boolean;  // your messages type on the on-screen keyboard (default on)
   sceneBackground: string;   // CSS behind the phone (color or gradient); also fills export margins
 };
 

@@ -119,7 +119,7 @@ export function calculateTimelineStats(project) {
     cursor += msToFrames(m.delayMs || 0);
     const mine = project.participants.find((p) => p.id === m.participantId)?.side === "right";
     const typingMs = m.typingDurationMs > 0 ? m.typingDurationMs
-      : mine && !m.voice && !m.image && (m.text || "").trim() ? Math.min(5000, Math.max(900, Array.from(m.text).length * 85)) : 0; // keep in sync with src/timeline.ts typingMsOf
+      : mine && project.appearance?.keyboardTyping !== false && !m.voice && !m.image && (m.text || "").trim() ? Math.min(5000, Math.max(900, Array.from(m.text).length * 85)) : 0; // keep in sync with src/timeline.ts typingMsOf
     if (typingMs > 0) {
       cursor += msToFrames(typingMs);
     }

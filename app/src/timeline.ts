@@ -29,7 +29,7 @@ export type Timeline = {
 export function typingMsOf(project: Project, m: Message): number {
   if (m.typingDurationMs > 0) return m.typingDurationMs;
   const mine = project.participants.find((p) => p.id === m.participantId)?.side === "right";
-  if (!mine || m.voice || m.image || !m.text.trim()) return 0;
+  if (!mine || project.appearance.keyboardTyping === false || m.voice || m.image || !m.text.trim()) return 0;
   return Math.min(5000, Math.max(900, Array.from(m.text).length * 85));
 }
 
