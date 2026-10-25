@@ -1,6 +1,7 @@
 // Local render worker and API server. Bundles the Remotion entry once,
 // renders the ChatReel composition to a real 1080x1920 H.264 MP4, reports progress,
 // manages project storage, and serves downloads.
+import { mountMedia } from "./media.mjs";
 import express from "express";
 import path from "node:path";
 import fs from "node:fs";
@@ -29,6 +30,7 @@ const PUBLIC_BASE = process.env.CHATVID_WEB_URL || "https://chatvid.nomanahmed.i
 const app = express();
 app.use(express.json({ limit: "40mb" })); // projects carry voice-note audio as data URIs
 app.use(express.urlencoded({ extended: true })); // OAuth token endpoint is form-encoded
+mountMedia(app); // media uploads for cloud projects
 
 // OAuth 2.1 authorization server + discovery for the MCP connector
 mountOAuth(app, PUBLIC_BASE);

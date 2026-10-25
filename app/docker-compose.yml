@@ -13,10 +13,13 @@ services:
     environment:
       - PORT=4000
       - NODE_ENV=production
+      - CHATVID_MEDIA_DIR=/app/media
+      - CONVEX_URL=${VITE_CONVEX_URL:-https://rapid-duck-327.eu-west-1.convex.cloud}
       - CHATVID_WEB_URL=https://chatvid.nomanahmed.io
       - CHATVID_OAUTH_SECRET=${CHATVID_OAUTH_SECRET:?set CHATVID_OAUTH_SECRET in /opt/chatvid/.env}
     volumes:
       - chatvid_browser:/app/.remotion-browser   # cache the headless Chrome shell
+      - chatvid_media:/app/media                  # uploaded voice/photo/avatar files (VPS storage)
       - chatvid_tmp:/tmp                          # render outputs (auto-cleaned)
     networks:
       - navex-shared
@@ -30,3 +33,4 @@ networks:
 volumes:
   chatvid_browser:
   chatvid_tmp:
+  chatvid_media:

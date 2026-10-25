@@ -7,6 +7,7 @@ import os from "node:os";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
+import { mediaPath } from "./media.mjs";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, renderStill, selectComposition } from "@remotion/renderer";
 
@@ -52,7 +53,7 @@ export function validateProject(project) {
     }
     if (m.image != null) {
       const im = m.image;
-      if (typeof im.src !== "string" || !/^data:image\/(png|jpe?g|webp|gif);/.test(im.src)) return "A photo message needs an image data: URI (png, jpeg, webp or gif).";
+      if (typeof im.src !== "string" || !(/^data:image\/(png|jpe?g|webp|gif);/.test(im.src) || mediaPath(im.src))) return "A photo message needs an image data: URI or stored media URL (png, jpeg, webp or gif).";
       if (!Number.isFinite(im.width) || !Number.isFinite(im.height) || im.width <= 0 || im.height <= 0) return "A photo message needs a positive width and height.";
     }
     if (m.voice != null) {
@@ -60,7 +61,7 @@ export function validateProject(project) {
       if (typeof v.src !== "string") return "A voice message needs a src string (empty for a silent placeholder).";
       if (!Number.isFinite(v.durationMs) || v.durationMs < 0 || v.durationMs > 5 * 60 * 1000) return "A voice message's durationMs must be between 0 and 5 minutes.";
       if (!Array.isArray(v.peaks)) return "A voice message needs a peaks array (may be empty).";
-      if (v.src && !/^data:audio\/|^data:video\/webm|^data:application\/ogg/.test(v.src)) return "A voice message's audio must be an audio data: URI.";
+      if (v.src && !(/^data:audio\/|^data:video\/webm|^data:application\/ogg/.test(v.src) || mediaPath(v.src))) return "A voice message's audio must be an audio data: URI.";
     }
   }
   return null;
@@ -81,15 +82,16 @@ async function withMediaAssets(project, { audio }) {
   const dirs = {};
   // write one data URI to <bundle>/public/<kind>/<uuid>.<ext>; returns the path staticFile() resolves
   async function materialize(kind, dataUri, extMap) {
-    const match = /^data:([^;,]+)[^,]*;base64,([\s\S]*)$/.exec(dataUri);
-    if (!match) return null;
+    const stored = mediaPath(dataUri); // already on the VPS: copy the file instead of decoding
+    const match = stored ? null : /^data:([^;,]+)[^,]*;base64,([\s\S]*)$/.exec(dataUri);
+    if (!match && !stored) return null;
     if (!dirs[kind]) {
       dirs[kind] = path.join(await getRemotionBundle(), "public", kind);
       fs.mkdirSync(dirs[kind], { recursive: true });
     }
-    const name = `${randomUUID()}.${extMap[match[1].toLowerCase()] || "bin"}`;
+    const name = `${randomUUID()}.${stored ? path.extname(stored).slice(1) : extMap[match[1].toLowerCase()] || "bin"}`;
     const file = path.join(dirs[kind], name);
-    fs.writeFileSync(file, Buffer.from(match[2], "base64"));
+    if (stored) fs.copyFileSync(stored, file); else fs.writeFileSync(file, Buffer.from(match[2], "base64"));
     written.push(file);
     return `${kind}/${name}`;
   }
@@ -97,6 +99,10 @@ async function withMediaAssets(project, { audio }) {
     if (m.voice?.src) m.voice.src = (audio && (await materialize("voice", m.voice.src, AUDIO_EXT))) || "";
     if (m.image?.src) m.image.src = (await materialize("media", m.image.src, IMAGE_EXT)) || "";
   }
+  // avatars + wallpaper stored on the VPS: the renderer's browser fetches them over HTTP
+  const abs = (u) => (/^\/api\/media\//.test(u || "") ? `http://127.0.0.1:${process.env.PORT || 4000}${u}` : u);
+  for (const p of clone.participants || []) if (p.avatarUrl) p.avatarUrl = abs(p.avatarUrl);
+  if (clone.appearance?.wallpaperUrl) clone.appearance.wallpaperUrl = abs(clone.appearance.wallpaperUrl);
   return {
     project: clone,
     cleanup: () => { for (const f of written) { try { fs.unlinkSync(f); } catch { /* already gone */ } } },

@@ -9,6 +9,8 @@ import {
   Pencil, Check, ChevronDown, Loader2, TriangleAlert, X, Mic, ImagePlus, Image as ImageIcon, FolderKanban,
 } from "lucide-react";
 import { useQuery, useMutation, useConvex } from "convex/react";
+import { useAuthToken } from "@convex-dev/auth/react";
+import { offloadMedia } from "./cloudMedia";
 import { api } from "../convex/_generated/api";
 import { AuthModal } from "./AuthModal";
 import { UserMenu } from "./UserMenu";
@@ -128,6 +130,7 @@ export default function App() {
   const viewer = useQuery(api.users.viewer);
   const saveProjectToConvex = useMutation(api.projects.save);
   const convex = useConvex();
+  const authToken = useAuthToken();
 
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signIn" | "signUp">("signIn");
@@ -198,20 +201,20 @@ export default function App() {
   useEffect(() => {
     if (viewer && prevViewerRef.current === null) {
       showToast(`Welcome back, ${viewer.name}! Projects synced to cloud.`, "success");
-      saveProjectToConvex({
-        projectId: project.id,
-        title: project.title,
-        schemaVersion: project.schemaVersion,
-        participants: project.participants,
-        messages: project.messages,
-        appearance: project.appearance,
-        exportSettings: project.exportSettings,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-      }).catch((err) => console.warn("Initial cloud sync error", err));
+      offloadMedia(project, authToken)
+        .then((media) => saveProjectToConvex({
+          projectId: project.id,
+          title: project.title,
+          schemaVersion: project.schemaVersion,
+          exportSettings: project.exportSettings,
+          createdAt: project.createdAt,
+          updatedAt: project.updatedAt,
+          ...media,
+        }))
+        .catch((err) => console.warn("Initial cloud sync error", err));
     }
     prevViewerRef.current = viewer;
-  }, [viewer, project, saveProjectToConvex, showToast]);
+  }, [viewer, project, authToken, saveProjectToConvex, showToast]);
 
   // ── autosave (debounced): saves to IndexedDB and syncs to Convex cloud + server ──
   useEffect(() => {
@@ -236,12 +239,10 @@ export default function App() {
             projectId: project.id,
             title: project.title,
             schemaVersion: project.schemaVersion,
-            participants: project.participants,
-            messages: project.messages,
-            appearance: project.appearance,
             exportSettings: project.exportSettings,
             createdAt: project.createdAt,
             updatedAt: project.updatedAt,
+            ...(await offloadMedia(project, authToken)),
           });
         } catch (err) {
           console.warn("Convex autosave error", err);
@@ -251,7 +252,7 @@ export default function App() {
       setSaveState("saved");
     }, 600);
     return () => clearTimeout(h);
-  }, [project, viewer, saveProjectToConvex]);
+  }, [project, viewer, authToken, saveProjectToConvex]);
 
   const handleSelectProject = useCallback((p: Project) => {
     dispatch({ t: "load", p });
