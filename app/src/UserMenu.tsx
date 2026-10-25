@@ -6,6 +6,7 @@ import {
   LogIn,
   LogOut,
   FolderKanban,
+  LayoutDashboard,
   Sparkles,
   ChevronDown,
   UserPlus,
@@ -124,6 +125,11 @@ export function UserMenu({ onOpenProjects, onOpenAuth }: Props) {
             <FolderKanban size={15} />
             <span>My Cloud Projects</span>
           </button>
+
+          <a className="user-dropdown-item" role="menuitem" href="/dashboard">
+            <LayoutDashboard size={15} />
+            <span>Dashboard</span>
+          </a>
 
           {viewer.isAnonymous && (
             <button

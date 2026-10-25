@@ -287,6 +287,16 @@ export default function App() {
     showToast("Created new project", "success");
   }, [showToast]);
 
+  // dashboard "New reel" links here
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("new") === "1") {
+      q.delete("new");
+      window.history.replaceState({}, "", `${window.location.pathname}${q.size ? `?${q}` : ""}`);
+      handleCreateNewProject();
+    }
+  }, [handleCreateNewProject]);
+
   // ── keyboard: undo/redo/export ──
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

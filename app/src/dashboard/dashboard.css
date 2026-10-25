@@ -1,0 +1,39 @@
+/* Dashboard-only Tailwind: theme + utilities, no preflight, and only classes found in src/dashboard
+   are generated, so the editor's own CSS is untouched. Tokens follow the Untitled UI design. */
+@import "@fontsource-variable/inter";
+@layer theme, base, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "./";
+
+@theme {
+  --font-sans: "Inter Variable", Inter, system-ui, sans-serif;
+  --color-gray-25: #fcfcfd; --color-gray-50: #f9fafb; --color-gray-100: #f2f4f7; --color-gray-200: #eaecf0;
+  --color-gray-300: #d0d5dd; --color-gray-400: #98a2b3; --color-gray-500: #667085; --color-gray-600: #475467;
+  --color-gray-700: #344054; --color-gray-800: #1d2939; --color-gray-900: #101828;
+  --color-brand-50: #f9f5ff; --color-brand-100: #f4ebff; --color-brand-200: #e9d7fe; --color-brand-500: #9e77ed;
+  --color-brand-600: #7f56d9; --color-brand-700: #6941c6;
+  --color-ok-50: #ecfdf3; --color-ok-200: #abefc6; --color-ok-500: #17b26a; --color-ok-700: #067647;
+  --color-bad-50: #fef3f2; --color-bad-200: #fecdca; --color-bad-700: #b42318;
+  --color-sky-50: #eff8ff; --color-sky-200: #b2ddff; --color-sky-700: #175cd3;
+  --color-pink-50: #fdf2fa; --color-pink-200: #fcceee; --color-pink-700: #c11574;
+  --color-amber-50: #fff6ed; --color-amber-200: #f9dbaf; --color-amber-700: #b93815;
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-logo: 0 1px 1.5px rgba(16, 24, 40, 0.1), 0 1px 1px rgba(16, 24, 40, 0.06);
+}
+
+/* minimal scoped reset (no global preflight): lets utilities style native controls cleanly */
+@layer base {
+  .dash, .dash * { box-sizing: border-box; }
+  .dash { margin: 0; -webkit-font-smoothing: antialiased; }
+  .dash h1, .dash h2, .dash p { margin: 0; }
+  .dash button, .dash input { font: inherit; color: inherit; margin: 0; }
+  .dash button { background: none; border: 0; padding: 0; }
+  .dash input { border: 0; outline: 0; background: none; padding: 0; }
+  .dash a { color: inherit; text-decoration: none; }
+  .dash table { border-spacing: 0; }
+  .dash th, .dash td { padding: 0; }
+  .dash img { display: block; }
+  .dash :focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
+  .dash input:focus-visible { outline: 0; }
+}
