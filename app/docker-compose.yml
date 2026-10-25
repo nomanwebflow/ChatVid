@@ -3,7 +3,10 @@
 # that collides with other services.
 services:
   render:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_CONVEX_URL: ${VITE_CONVEX_URL:-https://rapid-duck-327.eu-west-1.convex.cloud}
     image: chatvid-render:latest
     container_name: chatvid-render
     restart: unless-stopped

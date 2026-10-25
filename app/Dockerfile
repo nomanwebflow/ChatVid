@@ -8,6 +8,9 @@ COPY package*.json ./
 # npm install (not ci): tolerant of lockfile drift from Remotion dep bumps
 RUN npm install --no-audit --no-fund
 COPY . .
+# Vite inlines this at build time (Convex Auth + database)
+ARG VITE_CONVEX_URL
+ENV VITE_CONVEX_URL=$VITE_CONVEX_URL
 RUN npm run build
 
 # ---- runtime: Node + headless-Chrome system libs + FFmpeg ----
