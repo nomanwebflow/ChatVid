@@ -19,6 +19,7 @@ npm-debug.log*
 .DS_Store
 .vscode/
 .idea/
+*.tsbuildinfo
 
 # env
 .env

@@ -6,8 +6,13 @@ import type { Project, Message, EntryAnimation, Participant, ImageAttachment } f
 import {
   Undo2, Redo2, ClipboardPaste, RotateCcw, Download, Plus, Copy, Trash2, GripVertical, Ellipsis, CheckCheck,
   Play, Pause, SkipBack, Smartphone, Maximize2, Upload, ListOrdered, SlidersHorizontal, MessageSquarePlus,
-  Pencil, Check, ChevronDown, Loader2, TriangleAlert, X, Mic, ImagePlus, Image as ImageIcon,
+  Pencil, Check, ChevronDown, Loader2, TriangleAlert, X, Mic, ImagePlus, Image as ImageIcon, FolderKanban,
 } from "lucide-react";
+import { useQuery, useMutation, useConvex } from "convex/react";
+import { api } from "../convex/_generated/api";
+import { AuthModal } from "./AuthModal";
+import { UserMenu } from "./UserMenu";
+import { ProjectsModal } from "./ProjectsModal";
 import { VoicePanel } from "./VoicePanel";
 import { ImagePanel } from "./ImagePanel";
 import { IMAGE_ACCEPT, imageFromFile } from "./image";
@@ -119,50 +124,157 @@ export default function App() {
   const tl = useMemo(() => buildTimeline(project), [project]);
   const totalFrames = tl.totalFrames;
 
+  // ── Convex multi-user Auth & Cloud DB ──
+  const viewer = useQuery(api.users.viewer);
+  const saveProjectToConvex = useMutation(api.projects.save);
+  const convex = useConvex();
+
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signIn" | "signUp">("signIn");
+  const [projectsOpen, setProjectsOpen] = useState(false);
+
   // ── load project on mount: check URL ?project=<id> first, then fallback to last saved ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlProjectId = params.get("project");
     const loadFromLocal = () => {
       const last = localStorage.getItem(PROJECT_KEY);
-      if (last) loadProject(last).then((p) => { if (p) { dispatch({ t: "load", p }); setSelId(p.messages[0]?.id ?? null); } });
+      if (last) {
+        loadProject(last).then((p) => {
+          if (p) {
+            dispatch({ t: "load", p });
+            setSelId(p.messages[0]?.id ?? null);
+          }
+        });
+      }
     };
 
     if (urlProjectId) {
-      fetch(`/api/projects/${urlProjectId}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((p) => {
-          if (p && p.schemaVersion === 1) {
+      // First try Convex cloud database
+      convex
+        .query(api.projects.get, { projectId: urlProjectId })
+        .then((cp) => {
+          if (cp && cp.schemaVersion === 1) {
+            const p: Project = {
+              schemaVersion: 1,
+              id: cp.projectId,
+              title: cp.title,
+              createdAt: cp.createdAt,
+              updatedAt: cp.updatedAt,
+              participants: cp.participants,
+              messages: cp.messages,
+              appearance: cp.appearance,
+              exportSettings: cp.exportSettings,
+            };
             dispatch({ t: "load", p });
             setSelId(p.messages[0]?.id ?? null);
             saveProject(p);
             localStorage.setItem(PROJECT_KEY, p.id);
-          } else {
-            loadFromLocal();
+            return;
           }
+          // Fallback to local server API or local DB
+          fetch(`/api/projects/${urlProjectId}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((p) => {
+              if (p && p.schemaVersion === 1) {
+                dispatch({ t: "load", p });
+                setSelId(p.messages[0]?.id ?? null);
+                saveProject(p);
+                localStorage.setItem(PROJECT_KEY, p.id);
+              } else {
+                loadFromLocal();
+              }
+            })
+            .catch(() => loadFromLocal());
         })
         .catch(() => loadFromLocal());
     } else {
       loadFromLocal();
     }
-  }, []);
+  }, [convex]);
 
-  // ── autosave (debounced): saves to IndexedDB and syncs to server ──
+  // When user logs in, ensure their active project is synced to their cloud account
+  const prevViewerRef = useRef<typeof viewer>(undefined);
+  useEffect(() => {
+    if (viewer && prevViewerRef.current === null) {
+      showToast(`Welcome back, ${viewer.name}! Projects synced to cloud.`, "success");
+      saveProjectToConvex({
+        projectId: project.id,
+        title: project.title,
+        schemaVersion: project.schemaVersion,
+        participants: project.participants,
+        messages: project.messages,
+        appearance: project.appearance,
+        exportSettings: project.exportSettings,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+      }).catch((err) => console.warn("Initial cloud sync error", err));
+    }
+    prevViewerRef.current = viewer;
+  }, [viewer, project, saveProjectToConvex, showToast]);
+
+  // ── autosave (debounced): saves to IndexedDB and syncs to Convex cloud + server ──
   useEffect(() => {
     setSaveState("dirty");
     const h = setTimeout(async () => {
       setSaveState("saving");
+      // 1. Local IndexedDB save (always succeeds and keeps offline copy)
       await saveProject(project);
       localStorage.setItem(PROJECT_KEY, project.id);
+
+      // 2. Local render server worker sync (best effort)
       fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(project),
       }).catch(() => {});
+
+      // 3. Convex multi-user Cloud DB sync (if authenticated)
+      if (viewer) {
+        try {
+          await saveProjectToConvex({
+            projectId: project.id,
+            title: project.title,
+            schemaVersion: project.schemaVersion,
+            participants: project.participants,
+            messages: project.messages,
+            appearance: project.appearance,
+            exportSettings: project.exportSettings,
+            createdAt: project.createdAt,
+            updatedAt: project.updatedAt,
+          });
+        } catch (err) {
+          console.warn("Convex autosave error", err);
+        }
+      }
+
       setSaveState("saved");
     }, 600);
     return () => clearTimeout(h);
-  }, [project]);
+  }, [project, viewer, saveProjectToConvex]);
+
+  const handleSelectProject = useCallback((p: Project) => {
+    dispatch({ t: "load", p });
+    setSelId(p.messages[0]?.id ?? null);
+    localStorage.setItem(PROJECT_KEY, p.id);
+    const url = new URL(window.location.href);
+    url.searchParams.set("project", p.id);
+    window.history.replaceState({}, "", url.toString());
+    showToast(`Loaded "${p.title}"`, "info");
+  }, [showToast]);
+
+  const handleCreateNewProject = useCallback(() => {
+    const newP = createSampleProject();
+    newP.id = "proj_" + Math.random().toString(36).slice(2, 10);
+    newP.title = "New Reel";
+    dispatch({ t: "load", p: newP });
+    setSelId(newP.messages[0]?.id ?? null);
+    localStorage.setItem(PROJECT_KEY, newP.id);
+    const url = new URL(window.location.href);
+    url.searchParams.set("project", newP.id);
+    window.history.replaceState({}, "", url.toString());
+    showToast("Created new project", "success");
+  }, [showToast]);
 
   // ── keyboard: undo/redo/export ──
   useEffect(() => {
@@ -328,6 +440,15 @@ export default function App() {
       <header className="toolbar" role="toolbar" aria-label="Editor toolbar">
         <div className="tb-group brand-group">
           <div className="brand"><span className="dot" aria-hidden="true" /> ChatVid</div>
+          <button
+            type="button"
+            className="tb-btn tb-projects-btn"
+            onClick={() => setProjectsOpen(true)}
+            title="Open Cloud Projects (All reels)"
+            aria-label="Cloud Projects"
+          >
+            <FolderKanban size={IC} /> <span className="lbl">Projects</span>
+          </button>
           <div className="title-wrap" title="Click to rename project">
             <input
               className="title-input"
@@ -393,7 +514,7 @@ export default function App() {
             {saveState === "saving" ? (
               <>
                 <span className="save-dot saving" aria-hidden="true" />
-                <span className="save-text">Saving…</span>
+                <span className="save-text">{viewer ? "Syncing…" : "Saving…"}</span>
               </>
             ) : saveState === "dirty" ? (
               <>
@@ -403,10 +524,18 @@ export default function App() {
             ) : (
               <>
                 <Check size={13} className="save-check" aria-hidden="true" />
-                <span className="save-text">All changes saved</span>
+                <span className="save-text">{viewer ? "Cloud synced" : "Saved locally"}</span>
               </>
             )}
           </div>
+
+          <UserMenu
+            onOpenProjects={() => setProjectsOpen(true)}
+            onOpenAuth={(mode) => {
+              setAuthMode(mode ?? "signIn");
+              setAuthOpen(true);
+            }}
+          />
           <button
             type="button"
             className={`tb-btn tb-drawer-btn ${inspectorDrawerOpen ? "active" : ""}`}
@@ -709,6 +838,29 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Cloud Modals */}
+      <AuthModal
+        isOpen={authOpen}
+        onClose={() => setAuthOpen(false)}
+        defaultMode={authMode}
+        onSuccess={() => {
+          showToast("Signed in successfully!", "success");
+        }}
+      />
+
+      <ProjectsModal
+        isOpen={projectsOpen}
+        onClose={() => setProjectsOpen(false)}
+        currentProjectId={project.id}
+        onSelectProject={handleSelectProject}
+        onCreateNew={handleCreateNewProject}
+        onOpenAuth={() => {
+          setProjectsOpen(false);
+          setAuthMode("signIn");
+          setAuthOpen(true);
+        }}
+      />
 
       {/* Floating Toast Feedback Notifications */}
       <div className="toast-container" aria-live="polite">
