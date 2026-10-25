@@ -1,7 +1,7 @@
 // Local render worker and API server. Bundles the Remotion entry once,
 // renders the ChatReel composition to a real 1080x1920 H.264 MP4, reports progress,
 // manages project storage, and serves downloads.
-import { mountMedia } from "./media.mjs";
+import { mountMedia, signedIn } from "./media.mjs";
 import express from "express";
 import path from "node:path";
 import fs from "node:fs";
@@ -13,6 +13,7 @@ import {
   ROOT_DIR,
   TEMP_DIR,
   validateProject,
+  calculateTimelineStats,
   renderProjectMedia,
   renderProjectStill,
   saveProjectFile,
@@ -98,10 +99,14 @@ app.delete("/api/projects/:id", (req, res) => {
 });
 
 // ── Render Jobs API ──
-app.post("/api/renders", (req, res) => {
+const GUEST_MAX_SECONDS = 60; // signed-out visitors can export up to a minute of video
+app.post("/api/renders", async (req, res) => {
   const project = req.body?.project;
   const err = validateProject(project);
   if (err) return res.status(400).json({ error: err });
+  if (calculateTimelineStats(project).durationSeconds > GUEST_MAX_SECONDS && !(await signedIn(req))) {
+    return res.status(401).json({ error: `Videos over ${GUEST_MAX_SECONDS} seconds need a free account. Sign in to export longer videos.` });
+  }
   const id = randomUUID();
   jobs.set(id, { status: "queued", progress: 0, createdAt: Date.now() });
   runRender(id, project); // fire and forget

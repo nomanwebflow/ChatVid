@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Project } from "./types";
 import { framesToSeconds } from "./timeline";
+import { useAuthToken } from "@convex-dev/auth/react";
 import { X, TriangleAlert, Film, Image } from "lucide-react";
 
 type Props = {
@@ -27,6 +28,7 @@ export function ExportDialog({
   onExportFinish,
   onExportError,
 }: Props) {
+  const token = useAuthToken();
   const [mode, setMode] = useState<Mode>("video");
   const [phase, setPhase] = useState<Phase>("settings");
   const [progress, setProgress] = useState(0);
@@ -44,7 +46,7 @@ export function ExportDialog({
     onExportStart?.();
     try {
       const r = await fetch("/api/stills", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ projectId: project.id, schemaVersion: 1, project }),
       });
       if (!r.ok) {
@@ -172,6 +174,9 @@ export function ExportDialog({
 
           {phase === "settings" && mode === "video" && (
             <p className="hint">Renders the exact preview on the server as a 1080×1920 MP4.</p>
+          )}
+          {phase === "settings" && mode === "video" && !token && durationS > 60 && (
+            <p className="warn"><TriangleAlert size={13} /> Signed-out exports are limited to 60 seconds. This video is {durationS.toFixed(0)}s: sign in to export it, or trim it.</p>
           )}
           {phase === "settings" && mode === "image" && (
             <p className="hint">Captures the final frame — every message revealed — as a full-resolution PNG.</p>

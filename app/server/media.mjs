@@ -20,7 +20,7 @@ const TYPE = Object.fromEntries(Object.entries(EXT).map(([t, e]) => [e, t]));
 const viewer = makeFunctionReference("users:viewer");
 const NAME_RE = /^[a-f0-9]{40}\.[a-z0-9]{2,4}$/;
 
-async function signedIn(req) {
+export async function signedIn(req) {
   const token = /^Bearer (.+)$/.exec(req.headers.authorization || "")?.[1];
   if (!token) return false;
   try {
