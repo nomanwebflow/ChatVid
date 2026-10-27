@@ -39,6 +39,19 @@ type Action =
 
 const touch = (p: Project): Project => ({ ...p, updatedAt: new Date().toISOString() });
 
+function normalizeProject(p: Project): Project {
+  const them = p.participants.find((x) => x.side === "left");
+  if (them && p.appearance?.contactName && them.name !== p.appearance.contactName) {
+    return {
+      ...p,
+      participants: p.participants.map((x) =>
+        x.id === them.id ? { ...x, name: p.appearance.contactName } : x
+      ),
+    };
+  }
+  return p;
+}
+
 function reducer(s: State, a: Action): State {
   switch (a.t) {
     case "set": {
@@ -57,7 +70,7 @@ function reducer(s: State, a: Action): State {
       return { past: [...s.past, s.project], project: next, future: s.future.slice(1) };
     }
     case "load":
-      return { past: [], project: a.p, future: [] };
+      return { past: [], project: normalizeProject(a.p), future: [] };
   }
 }
 
@@ -340,6 +353,26 @@ export default function App() {
   function updateMessage(id: string, patch: Partial<Message>, squash = false) {
     setProject({ ...project, messages: project.messages.map((m) => (m.id === id ? { ...m, ...patch } : m)) }, squash);
   }
+
+  const updateParticipant = useCallback((id: string, name: string, squash = false) => {
+    const them = project.participants.find((p) => p.side === "left");
+    const isThem = them?.id === id;
+    const nextParts = project.participants.map((p) =>
+      p.id === id ? { ...p, name } : p
+    );
+    const nextAppearance = isThem
+      ? { ...project.appearance, contactName: name }
+      : project.appearance;
+    setProject(
+      {
+        ...project,
+        participants: nextParts,
+        appearance: nextAppearance,
+      },
+      squash
+    );
+  }, [project, setProject]);
+
   function reindex(list: Message[]): Message[] { return list.map((m, i) => ({ ...m, order: i })); }
 
   // `voice` adds a voice-message placeholder: a 3 s silent bubble until audio is
@@ -785,12 +818,22 @@ export default function App() {
           </div>
           <div className="panel-body">
             {sel ? (
-              <MessageProps key={sel.id} m={sel} project={project} onChange={updateMessage} />
+              <MessageProps
+                key={sel.id}
+                m={sel}
+                project={project}
+                onChange={updateMessage}
+                onUpdateParticipant={updateParticipant}
+              />
             ) : (
               <div className="empty">Select a message to edit its text, timing, and read receipts.</div>
             )}
             <hr className="inspector-divider" />
-            <AppearanceProps project={project} onChange={setProject} />
+            <AppearanceProps
+              project={project}
+              onChange={setProject}
+              onUpdateParticipant={updateParticipant}
+            />
           </div>
         </div>
 
@@ -818,6 +861,7 @@ export default function App() {
         onRestart={restart}
         onUpdateMessage={updateMessage}
         onAddMessage={() => addMessage()}
+        onUpdateParticipant={updateParticipant}
       />
 
       {/* mobile tabs */}
@@ -1024,11 +1068,16 @@ function MessageProps({
   m,
   project,
   onChange,
+  onUpdateParticipant,
 }: {
   m: Message;
   project: Project;
   onChange: (id: string, p: Partial<Message>, squash?: boolean) => void;
+  onUpdateParticipant?: (id: string, name: string, squash?: boolean) => void;
 }) {
+  const [editingSender, setEditingSender] = useState(false);
+  const part = project.participants.find((p) => p.id === m.participantId);
+
   return (
     <>
       {/* 1. MESSAGE SECTION */}
@@ -1053,11 +1102,26 @@ function MessageProps({
           <ImagePanel key={`${m.id}-img`} m={m} onChange={onChange} />
           <div className="row2">
             <div className="field">
-              <label htmlFor="msender">Sender</label>
+              <div className="field-label-row">
+                <label htmlFor="msender">Sender</label>
+                {onUpdateParticipant && part && (
+                  <button
+                    type="button"
+                    className="field-link-btn"
+                    onClick={() => setEditingSender((v) => !v)}
+                    title={`Rename ${part.side === "left" ? "Them" : "You"} (${part.name})`}
+                  >
+                    <Pencil size={11} /> {editingSender ? "Done" : "Rename"}
+                  </button>
+                )}
+              </div>
               <select
                 id="msender"
                 value={m.participantId}
-                onChange={(e) => onChange(m.id, { participantId: e.target.value })}
+                onChange={(e) => {
+                  onChange(m.id, { participantId: e.target.value });
+                  setEditingSender(false);
+                }}
               >
                 {project.participants.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -1080,6 +1144,33 @@ function MessageProps({
               </select>
             </div>
           </div>
+          {editingSender && part && onUpdateParticipant && (
+            <div className="field sender-rename-field">
+              <label htmlFor="msender-rename">
+                {part.side === "left" ? 'Edit "Them" name' : 'Edit "You" name'}
+              </label>
+              <div className="sender-rename-input-wrap">
+                <input
+                  id="msender-rename"
+                  type="text"
+                  autoFocus
+                  placeholder={part.side === "left" ? "e.g. Todd, Sarah..." : "e.g. You..."}
+                  value={part.name}
+                  onChange={(e) => onUpdateParticipant(part.id, e.target.value, true)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") setEditingSender(false);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="tb-btn"
+                  onClick={() => setEditingSender(false)}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1209,14 +1300,53 @@ function PhotoField({ label, who, onSet }: { label: string; who: Participant; on
 }
 
 // ── appearance / global panel ──
-function AppearanceProps({ project, onChange }: { project: Project; onChange: (p: Project) => void }) {
+function AppearanceProps({
+  project,
+  onChange,
+  onUpdateParticipant,
+}: {
+  project: Project;
+  onChange: (p: Project, squash?: boolean) => void;
+  onUpdateParticipant?: (id: string, name: string, squash?: boolean) => void;
+}) {
   const a = project.appearance;
-  const set = (patch: Partial<typeof a>) => onChange({ ...project, appearance: { ...a, ...patch } });
+  const set = (patch: Partial<typeof a>, squash?: boolean) =>
+    onChange({ ...project, appearance: { ...a, ...patch } }, squash);
   const them = project.participants.find((p) => p.side === "left") || project.participants[0];
   // "You": the right-hand sender, whose photo shows on your voice messages
   const me = project.participants.find((p) => p.side === "right" && p.id !== them.id);
   const setAvatar = (id: string, url: string | undefined) =>
     onChange({ ...project, participants: project.participants.map((p) => (p.id === id ? { ...p, avatarUrl: url } : p)) });
+
+  const onUpdateThemName = (name: string) => {
+    if (onUpdateParticipant) {
+      onUpdateParticipant(them.id, name, true);
+    } else {
+      const nextParts = project.participants.map((p) =>
+        p.id === them.id ? { ...p, name } : p
+      );
+      onChange(
+        {
+          ...project,
+          participants: nextParts,
+          appearance: { ...a, contactName: name },
+        },
+        true
+      );
+    }
+  };
+
+  const onUpdateMeName = (name: string) => {
+    if (!me) return;
+    if (onUpdateParticipant) {
+      onUpdateParticipant(me.id, name, true);
+    } else {
+      const nextParts = project.participants.map((p) =>
+        p.id === me.id ? { ...p, name } : p
+      );
+      onChange({ ...project, participants: nextParts }, true);
+    }
+  };
 
   return (
     <>
@@ -1225,15 +1355,27 @@ function AppearanceProps({ project, onChange }: { project: Project; onChange: (p
         <PhotoField label="Profile photo" who={them} onSet={(url) => setAvatar(them.id, url)} />
         {me && <PhotoField label="Your photo" who={me} onSet={(url) => setAvatar(me.id, url)} />}
         <div className="field">
-          <label htmlFor="cname">Contact name</label>
+          <label htmlFor="cname">Contact name (Them)</label>
           <input
             id="cname"
             type="text"
-            placeholder="Contact name"
-            value={a.contactName}
-            onChange={(e) => set({ contactName: e.target.value })}
+            placeholder="Contact name (Them)"
+            value={them?.name ?? a.contactName ?? ""}
+            onChange={(e) => onUpdateThemName(e.target.value)}
           />
         </div>
+        {me && (
+          <div className="field">
+            <label htmlFor="myname">Your name (You)</label>
+            <input
+              id="myname"
+              type="text"
+              placeholder="Your name (You)"
+              value={me.name}
+              onChange={(e) => onUpdateMeName(e.target.value)}
+            />
+          </div>
+        )}
         <div className="field">
           <label htmlFor="csub">Status text</label>
           <input
@@ -1241,7 +1383,7 @@ function AppearanceProps({ project, onChange }: { project: Project; onChange: (p
             type="text"
             placeholder="e.g. online, typing..."
             value={a.contactSub}
-            onChange={(e) => set({ contactSub: e.target.value })}
+            onChange={(e) => set({ contactSub: e.target.value }, true)}
           />
         </div>
       </CollapsibleSection>

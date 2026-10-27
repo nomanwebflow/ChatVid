@@ -1,3 +1,6 @@
+@import "@fontsource-variable/inter";
+
 /* reset only — app styling lives in editor.css / chat.css */
-*{box-sizing:border-box}
-html,body,#root{margin:0;height:100%}
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; font-family: "Inter Variable", Inter, system-ui, sans-serif; }
+

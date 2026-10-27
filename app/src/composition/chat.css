@@ -6,6 +6,7 @@
   --txt-primary:#0a0a0a;--txt-secondary:rgba(0,0,0,.5);
   --brd-avatar:rgba(10,10,10,.1);--brd-input:#b2b2b2;
   width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  transition:background var(--dur-base) var(--ease); /* same as .preview-stage so both change together (vars only exist in the editor; a render never changes it) */
   font-family:-apple-system,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;line-height:1.33;
 }
 /* scale the phone up so it fills the 1080x1920 composition width.

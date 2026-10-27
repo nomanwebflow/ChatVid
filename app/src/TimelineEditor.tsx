@@ -19,6 +19,7 @@ import {
   Plus,
   LocateFixed,
   Mic,
+  Pencil,
 } from "lucide-react";
 
 interface TimelineEditorProps {
@@ -35,6 +36,7 @@ interface TimelineEditorProps {
   onRestart: () => void;
   onUpdateMessage: (id: string, patch: Partial<Message>) => void;
   onAddMessage: () => void;
+  onUpdateParticipant?: (id: string, name: string) => void;
 }
 
 const effects: Record<string, TimelineEffect> = {
@@ -58,10 +60,14 @@ export function EditorTimeline({
   onRestart,
   onUpdateMessage,
   onAddMessage,
+  onUpdateParticipant,
 }: TimelineEditorProps) {
   const timelineRef = useRef<TimelineState>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingCursor = useRef(false);
+
+  const [editingPartId, setEditingPartId] = useState<string | null>(null);
+  const [tempName, setTempName] = useState("");
 
   // Zoom scale: scaleWidth in px per second
   const [scaleWidth, setScaleWidth] = useState(120);
@@ -394,7 +400,40 @@ export function EditorTimeline({
                   <div key={p.id} className="etl-track-header-item" style={{ height: 48 }}>
                     <span className="etl-th-dot" style={{ background: p.color || "#888" }} />
                     <div className="etl-th-info">
-                      <span className="etl-th-name">{p.name}</span>
+                      {editingPartId === p.id && onUpdateParticipant ? (
+                        <input
+                          className="etl-th-rename-input"
+                          autoFocus
+                          value={tempName}
+                          onChange={(e) => setTempName(e.target.value)}
+                          onBlur={() => {
+                            if (tempName.trim()) onUpdateParticipant(p.id, tempName.trim());
+                            setEditingPartId(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              if (tempName.trim()) onUpdateParticipant(p.id, tempName.trim());
+                              setEditingPartId(null);
+                            } else if (e.key === "Escape") {
+                              setEditingPartId(null);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span
+                          className={`etl-th-name ${onUpdateParticipant ? "etl-th-name-editable" : ""}`}
+                          title={onUpdateParticipant ? `Click to rename ${p.name}` : undefined}
+                          onClick={() => {
+                            if (onUpdateParticipant) {
+                              setEditingPartId(p.id);
+                              setTempName(p.name);
+                            }
+                          }}
+                        >
+                          {p.name}
+                          {onUpdateParticipant && <Pencil size={10} className="etl-th-pencil" />}
+                        </span>
+                      )}
                       <span className="etl-th-sub">
                         {p.side === "right" ? "Me (Right)" : "Them (Left)"} · {count}
                       </span>
