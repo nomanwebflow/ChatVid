@@ -11,7 +11,8 @@
     "dev:all": "concurrently -n web,convex,render -c green,magenta,cyan \"vite\" \"convex dev\" \"node server/render.mjs\"",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "rsync -avz --exclude=node_modules --exclude=dist --exclude=.env.local --exclude=test-results --exclude=.git --exclude='data/outputs' --exclude='data/projects/*.json' ./ debian@167.114.152.92:/opt/chatvid/ && ssh debian@167.114.152.92 'cd /opt/chatvid && docker compose build && docker compose up -d'"
   },
   "dependencies": {
     "@auth/core": "^0.41.1",
