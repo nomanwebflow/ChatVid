@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Project } from "./types";
 import { framesToSeconds } from "./timeline";
 import { useAuthToken } from "@convex-dev/auth/react";
+import { useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
 import { X, TriangleAlert, Film, Image } from "lucide-react";
 
 type Props = {
@@ -11,6 +13,7 @@ type Props = {
   onExportStart?: () => void;
   onExportFinish?: () => void;
   onExportError?: (error: string) => void;
+  onOpenAuth?: () => void;
 };
 type Phase = "settings" | "queued" | "preparing" | "rendering" | "finalizing" | "completed" | "failed";
 type Mode = "video" | "image";
@@ -27,8 +30,11 @@ export function ExportDialog({
   onExportStart,
   onExportFinish,
   onExportError,
+  onOpenAuth,
 }: Props) {
   const token = useAuthToken();
+  const viewer = useQuery(api.users.viewer);
+  const hasAccount = !!viewer && !viewer.isAnonymous;
   const [mode, setMode] = useState<Mode>("video");
   const [phase, setPhase] = useState<Phase>("settings");
   const [progress, setProgress] = useState(0);
@@ -76,7 +82,11 @@ export function ExportDialog({
     onExportStart?.();
     try {
       const r = await fetch("/api/renders", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ projectId: project.id, schemaVersion: 1, project }),
       });
       const data = await r.json();
@@ -175,8 +185,8 @@ export function ExportDialog({
           {phase === "settings" && mode === "video" && (
             <p className="hint">Renders the exact preview on the server as a 1080×1920 MP4.</p>
           )}
-          {phase === "settings" && mode === "video" && !token && durationS > 60 && (
-            <p className="warn"><TriangleAlert size={13} /> Signed-out exports are limited to 60 seconds. This video is {durationS.toFixed(0)}s: sign in to export it, or trim it.</p>
+          {phase === "settings" && mode === "video" && !hasAccount && durationS > 60 && (
+            <p className="warn"><TriangleAlert size={13} /> Videos over 60 seconds need a free account. This video is {durationS.toFixed(0)}s: sign in to export it, or trim it.</p>
           )}
           {phase === "settings" && mode === "image" && (
             <p className="hint">Captures the final frame — every message revealed — as a full-resolution PNG.</p>
@@ -200,7 +210,11 @@ export function ExportDialog({
           </>) : (<>
             {phase === "settings" && (<>
               <button className="tb-btn" onClick={onClose}>Cancel</button>
-              <button className="tb-btn primary" onClick={start}>Start render</button>
+              {!hasAccount && durationS > 60 && onOpenAuth ? (
+                <button className="tb-btn primary" onClick={() => { onClose(); onOpenAuth(); }}>Sign in to export</button>
+              ) : (
+                <button className="tb-btn primary" onClick={start}>Start render</button>
+              )}
             </>)}
             {working && <button className="tb-btn" disabled>Rendering…</button>}
             {phase === "completed" && (<>
@@ -209,7 +223,11 @@ export function ExportDialog({
             </>)}
             {phase === "failed" && (<>
               <button className="tb-btn" onClick={onClose}>Close</button>
-              <button className="tb-btn primary" onClick={start}>Retry</button>
+              {error && (error.toLowerCase().includes("account") || error.toLowerCase().includes("sign in")) && onOpenAuth ? (
+                <button className="tb-btn primary" onClick={() => { onClose(); onOpenAuth(); }}>Sign in</button>
+              ) : (
+                <button className="tb-btn primary" onClick={start}>Retry</button>
+              )}
             </>)}
           </>)}
         </div>

@@ -22,15 +22,21 @@ const NAME_RE = /^[a-f0-9]{40}\.[a-z0-9]{2,4}$/;
 
 // the Convex user behind the request's Bearer token, or null
 export async function viewerOf(req) {
-  const token = /^Bearer (.+)$/.exec(req.headers.authorization || "")?.[1];
+  const token = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || "")?.[1];
   if (!token) return null;
   try {
     const c = new ConvexHttpClient(CONVEX_URL);
     c.setAuth(token);
     return (await c.query(viewer, {})) || null;
-  } catch { return null; }
+  } catch (err) {
+    console.error("viewerOf auth check failed:", err?.message || err);
+    return null;
+  }
 }
-export async function signedIn(req) { return !!(await viewerOf(req)); }
+export async function signedIn(req) {
+  const v = await viewerOf(req);
+  return !!v && !v.isAnonymous;
+}
 
 // "/api/media/<name>" -> absolute file path, or null
 export function mediaPath(url) {

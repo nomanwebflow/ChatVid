@@ -901,6 +901,10 @@ export default function App() {
             setIsExporting(false);
             showToast(`Export error: ${msg}`, "error");
           }}
+          onOpenAuth={() => {
+            setAuthMode("signIn");
+            setAuthOpen(true);
+          }}
         />
       )}
 
