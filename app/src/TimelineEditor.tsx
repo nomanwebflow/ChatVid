@@ -103,16 +103,15 @@ export function EditorTimeline({
     const maxScroll = Math.max(0, scrollWidth - clientWidth);
 
     if (playing) {
-      // Follow the playhead smoothly once it passes 40% of visible viewport
-      const followThreshold = clientWidth * 0.4;
-      if (playheadPx > currentScrollLeft + followThreshold) {
-        const targetScroll = Math.min(maxScroll, Math.max(0, playheadPx - followThreshold));
-        if (Math.abs(targetScroll - currentScrollLeft) >= 1) {
+      // Advance timeline viewport when playhead nears right edge (> 85% of visible viewport)
+      if (playheadPx > currentScrollLeft + clientWidth * 0.85) {
+        const targetScroll = Math.min(maxScroll, Math.max(0, playheadPx - clientWidth * 0.15));
+        if (Math.abs(targetScroll - currentScrollLeft) > 20) {
           timelineRef.current.setScrollLeft(targetScroll);
         }
       } else if (playheadPx < currentScrollLeft) {
-        // Video looped back or jumped back
-        const targetScroll = Math.min(maxScroll, Math.max(0, playheadPx - clientWidth * 0.2));
+        // Video looped back or seeked before viewport
+        const targetScroll = Math.min(maxScroll, Math.max(0, playheadPx - clientWidth * 0.15));
         timelineRef.current.setScrollLeft(targetScroll);
       }
     } else {
