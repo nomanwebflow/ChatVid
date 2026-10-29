@@ -49,6 +49,7 @@ export function buildServer() {
         contactStatus: z.string().optional(),
         wallpaper: z.enum(["whatsapp", "blank"]).optional(),
         layout: z.enum(["phone", "fullscreen"]).optional(),
+        swapSides: z.boolean().optional().describe("Swap which speaker is on the left (Them) vs right (You)."),
         startClock: z.string().optional(),
         outputPath: z.string().optional(),
       },
@@ -78,6 +79,7 @@ export function buildServer() {
         script: z.string().optional(),
         projectId: z.string().optional(),
         frame: z.number().optional(),
+        swapSides: z.boolean().optional().describe("Swap which speaker is on the left (Them) vs right (You)."),
         outputPath: z.string().optional(),
       },
     },
@@ -88,7 +90,7 @@ export function buildServer() {
           project = getProjectFile(args.projectId);
           if (!project) throw new Error(`Project ${args.projectId} not found.`);
         } else if (args.script) {
-          project = createProjectFromScript(args.script);
+          project = createProjectFromScript(args.script, args);
           saveProjectFile(project);
         } else throw new Error("Must provide either 'script' or 'projectId'.");
         const destPath = args.outputPath || path.join(OUTPUTS_DIR, `${project.id}_preview.png`);
@@ -111,6 +113,7 @@ export function buildServer() {
         contactStatus: z.string().optional(),
         wallpaper: z.enum(["whatsapp", "blank"]).optional(),
         layout: z.enum(["phone", "fullscreen"]).optional(),
+        swapSides: z.boolean().optional().describe("Swap which speaker is on the left (Them) vs right (You)."),
         startClock: z.string().optional(),
       },
     },
@@ -181,7 +184,7 @@ export function buildServer() {
   server.registerTool(
     "chatvid_update_project",
     {
-      description: "Update a project's title, contact name/status, appearance, or message list.",
+      description: "Update a project's title, contact name/status, appearance, participants, or message list.",
       annotations: { title: "Update project", readOnlyHint: false, destructiveHint: true },
       inputSchema: {
         projectId: z.string(),
@@ -190,6 +193,7 @@ export function buildServer() {
         contactStatus: z.string().optional(),
         messages: z.array(z.any()).optional(),
         appearance: z.record(z.any()).optional(),
+        participants: z.array(z.any()).optional(),
       },
     },
     async (args) => {
@@ -197,9 +201,14 @@ export function buildServer() {
         const project = getProjectFile(args.projectId);
         if (!project) throw new Error(`Project ${args.projectId} not found.`);
         if (args.title !== undefined) project.title = args.title;
-        if (args.contactName !== undefined) project.appearance.contactName = args.contactName;
+        if (args.contactName !== undefined) {
+          project.appearance.contactName = args.contactName;
+          const them = project.participants.find((p) => p.side === "left");
+          if (them) them.name = args.contactName;
+        }
         if (args.contactStatus !== undefined) project.appearance.contactSub = args.contactStatus;
         if (args.appearance) project.appearance = { ...project.appearance, ...args.appearance };
+        if (args.participants) project.participants = args.participants;
         if (args.messages) project.messages = args.messages;
         const err = validateProject(project);
         if (err) throw new Error(`Updated project is invalid: ${err}`);

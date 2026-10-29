@@ -217,10 +217,25 @@ export function createProjectFromScript(scriptText, options = {}) {
   let rightParticipantId = null;
   let leftParticipantId = null;
 
+  const hasExplicitMe = speakers.some((s) => /^(you|me)$/i.test(s));
+
   speakers.forEach((speakerName, idx) => {
     const isMe = /^(you|me)$/i.test(speakerName);
-    const id = isMe ? "p_me" : `p_${idx + 1}`;
-    const side = isMe ? "right" : (idx === 0 ? "left" : "left");
+    let side;
+    if (isMe) {
+      side = "right";
+    } else if (hasExplicitMe) {
+      side = "left";
+    } else {
+      // In dialogue with no explicit "You"/"Me":
+      if (options.swapSides) {
+        side = idx === 0 ? "right" : (idx === 1 ? "left" : "left");
+      } else {
+        side = idx === 0 ? "left" : (idx === 1 ? "right" : "left");
+      }
+    }
+
+    const id = side === "right" && isMe ? "p_me" : `p_${idx + 1}`;
     if (side === "right" && !rightParticipantId) rightParticipantId = id;
     if (side === "left" && !leftParticipantId) leftParticipantId = id;
 
@@ -243,7 +258,21 @@ export function createProjectFromScript(scriptText, options = {}) {
     });
   }
 
+  // Ensure at least one left side participant
+  if (!leftParticipantId) {
+    leftParticipantId = "p_them";
+    participants.unshift({
+      id: leftParticipantId,
+      name: options.contactName || "Contact",
+      side: "left",
+      color: "#0a6b3b",
+    });
+  }
+
   const primaryLeftSpeaker = participants.find((p) => p.side === "left") || participants[0];
+  if (options.contactName) {
+    primaryLeftSpeaker.name = options.contactName;
+  }
 
   // Starting timestamp clock
   let clockMinutes = 614; // Default ~10:14 AM
