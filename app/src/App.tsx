@@ -875,8 +875,18 @@ export default function App() {
         <ImportDialog
           project={project}
           onClose={() => setImportOpen(false)}
-          onImport={(msgs) => {
-            setProject({ ...project, messages: msgs });
+          onImport={(msgs, updatedParticipants, newContactName) => {
+            const nextProject = { ...project, messages: msgs };
+            if (updatedParticipants && updatedParticipants.length) {
+              nextProject.participants = updatedParticipants;
+            }
+            if (newContactName) {
+              nextProject.appearance = {
+                ...nextProject.appearance,
+                contactName: newContactName,
+              };
+            }
+            setProject(nextProject);
             setSelId(msgs[0]?.id ?? null);
             setImportOpen(false);
             showToast(`Imported ${msgs.length} messages successfully`, "success");
