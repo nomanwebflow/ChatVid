@@ -378,6 +378,13 @@ select {
 .tb-btn.primary:hover:not(:disabled) {
   background: var(--brand-700);
   border-color: var(--brand-700);
+  color: #ffffff;
+}
+
+.tb-btn.primary:active:not(:disabled) {
+  background: var(--brand-800);
+  border-color: var(--brand-800);
+  color: #ffffff;
 }
 
 .tb-btn:focus-visible {
@@ -721,14 +728,22 @@ svg.lucide {
   display: block;
 }
 
-.icon-btn:hover {
-  background: var(--gray-50);
-  color: var(--gray-700);
+.icon-btn:hover:not(:disabled) {
+  background: var(--gray-100);
+  color: var(--gray-800);
 }
 
-.icon-btn.danger:hover {
+.icon-btn.danger:hover:not(:disabled) {
   background: var(--danger-50);
   color: var(--danger-700);
+}
+
+.icon-btn:active:not(:disabled) {
+  background: var(--gray-200);
+}
+
+.icon-btn.danger:active:not(:disabled) {
+  background: var(--danger-100);
 }
 
 .icon-btn:disabled {
@@ -816,15 +831,16 @@ svg.lucide {
   transition: all var(--dur-fast) var(--ease);
 }
 
-.layout-toggle .layout-btn:hover {
-  background: var(--gray-50);
+.layout-toggle .layout-btn:hover:not(.on) {
+  background: var(--gray-100);
   color: var(--gray-900);
 }
 
 .layout-toggle .layout-btn.on {
-  background: var(--gray-50);
+  background: var(--surface);
   color: var(--gray-900);
   font-weight: var(--fw-semibold);
+  box-shadow: var(--shadow-xs);
 }
 
 /* Floating pill playback bar */
@@ -1416,7 +1432,7 @@ svg.lucide {
   padding: 0;
 }
 
-.etl-btn:hover {
+.etl-btn:hover:not(:disabled) {
   background: var(--gray-50);
   border-color: var(--gray-300);
   color: var(--gray-900);
@@ -1425,6 +1441,18 @@ svg.lucide {
 .etl-btn.active {
   background: var(--brand-600);
   border-color: var(--brand-600);
+  color: #ffffff;
+}
+
+.etl-btn.active:hover:not(:disabled) {
+  background: var(--brand-700);
+  border-color: var(--brand-700);
+  color: #ffffff;
+}
+
+.etl-btn.active:active:not(:disabled) {
+  background: var(--brand-800);
+  border-color: var(--brand-800);
   color: #ffffff;
 }
 
@@ -2248,6 +2276,20 @@ a.tb-btn {
   display: none;
 }
 
+.tb-btn.tb-drawer-btn.active,
+.tb-drawer-btn.active {
+  background: var(--brand-50);
+  border-color: var(--brand-300);
+  color: var(--brand-700);
+}
+
+.tb-btn.tb-drawer-btn.active:hover:not(:disabled),
+.tb-drawer-btn.active:hover {
+  background: var(--brand-100);
+  border-color: var(--brand-400);
+  color: var(--brand-800);
+}
+
 .drawer-close-btn {
   display: none;
 }
@@ -2671,9 +2713,15 @@ a.tb-btn {
   background: var(--surface);
   border: 1px solid var(--border);
 }
+.tb-btn.tb-projects-btn:hover:not(:disabled),
 .tb-projects-btn:hover {
   background: var(--gray-100);
   border-color: var(--border-strong);
+  color: var(--gray-900);
+}
+.tb-btn.tb-projects-btn:active:not(:disabled),
+.tb-projects-btn:active {
+  background: var(--gray-200);
 }
 
 .user-menu-wrap {
@@ -2692,10 +2740,16 @@ a.tb-btn {
   border-radius: var(--r-md);
   transition: all 0.15s ease;
 }
+.tb-btn.auth-trigger-btn:hover:not(:disabled),
 .auth-trigger-btn:hover {
   background: var(--brand-100);
   color: var(--brand-900);
   border-color: var(--brand-500);
+}
+.tb-btn.auth-trigger-btn:active:not(:disabled),
+.auth-trigger-btn:active {
+  background: var(--brand-200);
+  color: var(--brand-900);
 }
 
 .user-btn {

@@ -103,7 +103,12 @@ export const ChatComposition: React.FC<Props> = ({ project, playerPlaying, onVoi
   const frame = useCurrentFrame();
   const tl = buildTimeline(project);
   const curIdx = currentEventIndex(tl, frame);
-  const them = project.participants.find((p) => p.side === "left")!;
+  const them = project.participants.find((p) => p.side === "left") || project.participants[0] || {
+    id: "p_them",
+    name: "Contact",
+    side: "left" as const,
+    color: "#0a6b3b",
+  };
   const byId = (id: string) => project.participants.find((p) => p.id === id) || them;
 
   // flatten the schedule into rows + an active typing indicator (if any)
