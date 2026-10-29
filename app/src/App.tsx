@@ -92,7 +92,6 @@ export default function App() {
   const [mobileTab, setMobileTab] = useState<"list" | "preview" | "props">("preview");
   const [isExporting, setIsExporting] = useState(false);
   const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
-  const [dismissDesktopNotice, setDismissDesktopNotice] = useState(false);
   const [toasts, setToasts] = useState<{ id: string; message: string; type?: "info" | "success" | "error" }[]>([]);
 
   const showToast = useCallback((message: string, type: "info" | "success" | "error" = "info") => {
@@ -119,10 +118,14 @@ export default function App() {
     const el = stageRef.current;
     if (!el) return;
     const fit = () => {
-      // Center the phone with equal breathing room: 80px vertical clearance (prevents
-      // touching the top edge or the bottom floating playback pill), and 48px horizontal.
-      const availW = Math.max(120, el.clientWidth - 48);
-      const availH = Math.max(200, el.clientHeight - 84);
+      // Center the phone with equal breathing room: 80px vertical clearance on desktop,
+      // 124px on mobile (prevents touching top layout toggle or bottom floating playback pill),
+      // and 24px horizontal on mobile / 48px on desktop.
+      const isMobile = window.innerWidth < 900;
+      const horizontalPad = isMobile ? 24 : 48;
+      const verticalClearance = isMobile ? 124 : 84;
+      const availW = Math.max(120, el.clientWidth - horizontalPad);
+      const availH = Math.max(200, el.clientHeight - verticalClearance);
       if (availW <= 0 || availH <= 0) return;
       let h = availH;
       let w = (h * 9) / 16;
@@ -135,7 +138,7 @@ export default function App() {
     // also refit once layout fully settles
     const r = requestAnimationFrame(fit);
     return () => { ro.disconnect(); cancelAnimationFrame(r); };
-  }, []);
+  }, [mobileTab]);
 
   const tl = useMemo(() => buildTimeline(project), [project]);
   const totalFrames = tl.totalFrames;
@@ -624,7 +627,22 @@ export default function App() {
       <div className="workspace">
         {/* message list */}
         <div className={`panel left ${mobileTab === "list" ? "active" : ""}`}>
-          <div className="panel-head"><h2>Messages</h2><span className="count">{ordered.length}</span></div>
+          <div className="panel-head">
+            <h2>Messages</h2>
+            <span className="count">{ordered.length}</span>
+            <div className="panel-head-actions">
+              <button
+                type="button"
+                className="tb-btn panel-paste-btn"
+                onClick={() => setImportOpen(true)}
+                title="Paste conversation script"
+                aria-label="Paste conversation script"
+              >
+                <ClipboardPaste size={13} />
+                <span>Paste script</span>
+              </button>
+            </div>
+          </div>
           <div className="panel-body">
             {ordered.length === 0 && (
               <div className="empty-list">
@@ -644,6 +662,10 @@ export default function App() {
                   aria-label={`${part?.name ?? "?"}: ${m.text || "empty message"}`}
                   aria-selected={selId === m.id}
                   onClick={() => selectAndSeek(m)}
+                  onDoubleClick={() => {
+                    selectAndSeek(m);
+                    setMobileTab("props");
+                  }}
                   onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", m.id); }}
                   onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverId(m.id); } }}
                   onDrop={(e) => { e.preventDefault(); if (dragId) moveTo(dragId, m.id); setDragId(null); setOverId(null); }}
@@ -697,6 +719,18 @@ export default function App() {
                     </div>
                   </div>
                   <div className="msg-actions">
+                    <button
+                      className="icon-btn msg-edit-btn"
+                      title="Edit in inspector"
+                      aria-label="Edit message in inspector"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        selectAndSeek(m);
+                        setMobileTab("props");
+                      }}
+                    >
+                      <SlidersHorizontal size={IC} />
+                    </button>
                     <button className="icon-btn" title="Duplicate" aria-label="Duplicate message" onClick={(e) => { e.stopPropagation(); duplicateMessage(m.id); }}><Copy size={IC} /></button>
                     <button className="icon-btn danger" title="Delete (Del)" aria-label="Delete message" onClick={(e) => { e.stopPropagation(); deleteMessage(m.id); }}><Trash2 size={IC} /></button>
                   </div>
@@ -805,6 +839,15 @@ export default function App() {
                   Message {project.messages.findIndex((x) => x.id === sel.id) + 1}
                 </span>
               )}
+              <button
+                type="button"
+                className="tb-btn mobile-preview-shortcut"
+                onClick={() => setMobileTab("preview")}
+                title="Preview video"
+                aria-label="Preview video"
+              >
+                <Play size={12} /> <span>Preview</span>
+              </button>
               <button
                 type="button"
                 className="icon-btn drawer-close-btn"
@@ -955,35 +998,6 @@ export default function App() {
           </div>
         ))}
       </div>
-
-      {/* "Best used on desktop" notice when screen width < 900px */}
-      {!dismissDesktopNotice && (
-        <div className="desktop-notice" aria-live="polite">
-          <div className="desktop-notice-card">
-            <button
-              type="button"
-              className="desktop-notice-close"
-              onClick={() => setDismissDesktopNotice(true)}
-              aria-label="Dismiss notice"
-            >
-              <X size={16} />
-            </button>
-            <Smartphone size={32} className="desktop-notice-icon" aria-hidden="true" />
-            <h3>Best used on desktop</h3>
-            <p>ChatVid’s video timeline and multi-panel editor is optimized for screens at least 900px wide.</p>
-            <p className="desktop-notice-hint">You can continue to preview the mobile layout or switch to a desktop computer.</p>
-            <div className="desktop-notice-actions">
-              <button
-                type="button"
-                className="tb-btn primary"
-                onClick={() => setDismissDesktopNotice(true)}
-              >
-                Continue to mobile view
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

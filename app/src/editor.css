@@ -2242,10 +2242,12 @@ a.tb-btn {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 52px;
-  background: var(--n-0);
-  border-top: 1px solid var(--line);
-  z-index: 30
+  height: calc(52px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 70;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .tabbar button {
@@ -2258,18 +2260,34 @@ a.tb-btn {
   border: none;
   background: transparent;
   font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--ink-2)
+  font-weight: var(--fw-semibold);
+  color: var(--gray-500);
+  padding: 4px 0;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tabbar button.on {
-  color: var(--accent);
-  box-shadow: inset 0 -2px 0 var(--accent)
+  color: var(--brand-700);
+  font-weight: var(--fw-bold);
+  position: relative;
+}
+
+.tabbar button.on::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 2px;
+  background: var(--brand-600);
+  border-radius: var(--r-pill);
 }
 
 .tabbar button:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: -3px
+  outline: 2px solid var(--brand-500);
+  outline-offset: -2px;
 }
 
 .tb-drawer-btn {
@@ -2411,86 +2429,87 @@ a.tb-btn {
   }
 }
 
-/* Best used on desktop notice under 900px */
+/* ============================================================
+   Mobile & Tablet Responsive Layout (< 900px)
+   ============================================================ */
 @media (max-width: 899px) {
-  .desktop-notice {
-    display: flex;
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background: rgba(10, 14, 12, 0.88);
-    backdrop-filter: blur(8px);
-    color: #ffffff;
-    align-items: center;
-    justify-content: center;
-    padding: var(--sp-6);
-    text-align: center;
+  /* Toolbar: fit neatly on screen, preserve essential actions */
+  .toolbar {
+    height: 48px;
+    padding: 0 8px;
+    gap: 4px;
+    justify-content: space-between;
+    overflow-x: hidden;
   }
 
-  .desktop-notice-card {
-    position: relative;
-    max-width: 380px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--sp-3);
-    background: #181d19;
-    border: 1px solid #28302a;
-    border-radius: var(--r-lg);
-    padding: var(--sp-6);
-    box-shadow: var(--sh-modal);
+  .tb-group {
+    gap: 4px;
+    flex-shrink: 1;
   }
 
-  .desktop-notice-close {
-    position: absolute;
-    top: var(--sp-3);
-    right: var(--sp-3);
-    width: 28px;
+  .brand-group {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .brand {
+    font-size: 13px;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .title-wrap {
+    min-width: 0;
+    flex: 1 1 70px;
+    max-width: 90px;
+  }
+
+  .title-input {
+    width: 100%;
+    max-width: 100%;
+    font-size: 12px;
     height: 28px;
-    border-radius: var(--r-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    color: var(--gray-400);
-    cursor: pointer;
-    transition: all var(--dur-fast) var(--ease);
+    padding: 0 4px;
   }
 
-  .desktop-notice-close:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
+  .title-pencil-hint,
+  .save-state-indicator,
+  .tb-divider,
+  .tb-drawer-btn {
+    display: none !important;
   }
 
-  .desktop-notice-icon {
-    color: var(--brand-500);
-    margin-bottom: var(--sp-1);
+  .tb-btn {
+    height: 30px;
+    padding: 0 6px;
+    font-size: 12px;
   }
 
-  .desktop-notice-card h3 {
-    margin: 0;
-    font-size: var(--fs-lg);
+  .tb-btn .lbl {
+    display: none !important;
+  }
+
+  /* Reset button hidden on mobile toolbar to avoid accidental loss */
+  .tb-btn[aria-label="Reset project"] {
+    display: none !important;
+  }
+
+  .status-export-group {
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* Always keep Export prominent and visible on mobile */
+  .tb-btn.primary {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
     font-weight: var(--fw-semibold);
-    color: #ffffff;
+    flex-shrink: 0;
   }
 
-  .desktop-notice-card p {
-    margin: 0;
-    font-size: var(--fs-base);
-    color: var(--gray-300);
-    line-height: 1.5;
-  }
-
-  .desktop-notice-hint {
-    font-size: var(--fs-xs) !important;
-    color: var(--gray-400) !important;
-  }
-
-  .desktop-notice-actions {
-    margin-top: var(--sp-2);
-    display: flex;
-    gap: var(--sp-2);
+  .tb-btn.primary span {
+    display: inline !important;
   }
 
   /* Mobile tabs layout */
@@ -2500,7 +2519,7 @@ a.tb-btn {
 
   .workspace {
     grid-template-columns: 1fr !important;
-    padding-bottom: 52px;
+    padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px));
   }
 
   .workspace .panel {
@@ -2517,6 +2536,192 @@ a.tb-btn {
   }
 
   .editor-timeline-panel {
+    display: none;
+  }
+
+  /* Preview Stage & Floating Controls */
+  .preview-stage {
+    padding: 10px 8px;
+  }
+
+  .preview-controls {
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    width: calc(100vw - 20px);
+    max-width: 370px;
+    padding: 4px 8px;
+    gap: 6px;
+  }
+
+  .pc-seek {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 45px;
+  }
+
+  .pc-time {
+    font-size: 11px;
+    min-width: 66px;
+  }
+
+  .pc-speed {
+    font-size: 11px;
+    padding: 2px 4px;
+  }
+
+  .pc-btn {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  .layout-toggle {
+    top: 8px;
+    right: 8px;
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .layout-toggle .layout-btn {
+    height: 26px;
+    padding: 0 6px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  /* Messages Panel Mobile Polish */
+  .panel.left .panel-head {
+    padding: 10px 12px;
+  }
+
+  .panel-paste-btn {
+    height: 28px;
+    font-size: 12px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .panel-paste-btn span {
+    display: inline !important;
+  }
+
+  .add-row {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .add-row .tb-btn {
+    height: 40px;
+    font-size: 13px;
+  }
+
+  /* Message actions visible and touch-accessible */
+  .msg-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .msg-actions .icon-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Inspector Panel on Mobile */
+  .panel.right .panel-body {
+    padding: var(--sp-3) var(--sp-3) calc(68px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-preview-shortcut {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .mobile-preview-shortcut span {
+    display: inline !important;
+  }
+
+  .drawer-close-btn {
+    display: none !important;
+  }
+}
+
+/* Extra small mobile phones (< 480px) */
+@media (max-width: 480px) {
+  .brand {
+    font-size: 12px;
+  }
+
+  .tb-btn[aria-label="Paste import chat"] {
+    display: none !important;
+  }
+
+  .title-wrap {
+    max-width: 75px;
+  }
+}
+
+/* Dialogs & Modals on mobile screens (< 600px) */
+@media (max-width: 600px) {
+  .scrim {
+    padding: 8px;
+  }
+
+  .dialog {
+    width: 100% !important;
+    max-height: 94vh;
+    border-radius: 14px;
+  }
+
+  .dialog-head {
+    padding: 12px 14px;
+  }
+
+  .dialog-head h3 {
+    font-size: 16px;
+  }
+
+  .dialog-body {
+    padding: 12px 14px;
+  }
+
+  .dialog-foot {
+    padding: 10px 14px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .dialog-foot .tb-btn {
+    flex: 1;
+    height: 38px;
+  }
+
+  .export-specs {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .pm-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pm-body {
+    padding: 12px;
+  }
+
+  .pm-anon-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .pm-head-left h3 {
+    font-size: 16px;
+  }
+
+  .pm-subtitle {
     display: none;
   }
 }
